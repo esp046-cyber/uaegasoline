@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Dubai Fuel Monitor – UAE vs Philippines Fuel Prices | Jebel Ali</title>
+<meta name="description" content="Daily UAE vs Philippines fuel price comparison, AED to PHP converter and fuel news for Jebel Ali, Discovery Gardens and Sheikh Zayed Road.">
+<link rel="canonical" href="https://esp046-cyber.github.io/dubaijebelalinews/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Dubai Fuel Monitor – UAE vs PH Prices">
+<meta property="og:description" content="Live AED↔PHP fuel comparison and daily fuel news for Dubai.">
+<meta property="og:url" content="https://esp046-cyber.github.io/dubaijebelalinews/">
+<meta property="og:image" content="https://esp046-cyber.github.io/dubaijebelalinews/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dubai Fuel Monitor – UAE vs PH Prices">
+<meta name="twitter:image" content="https://esp046-cyber.github.io/dubaijebelalinews/og-image.png">
+<meta name="theme-color" content="#0a0d14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DubaiFuel">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="ptr" class="ptr" aria-hidden="true">Release to refresh</div>
+<header class="top">
+  <div>
+    <h1>Dubai Fuel Monitor</h1>
+    <p class="sub">UAE vs Philippines · Jebel Ali</p>
+  </div>
+  <button id="shareBtn" class="btn">Share</button>
+</header>
+
+<div id="installBar" class="install" hidden>
+  <span>Install Dubai Fuel on your device</span>
+  <button id="installBtn" class="btn">Install</button>
+  <button id="installClose" class="btn ghost" aria-label="Dismiss">✕</button>
+</div>
+
+<main>
+  <section class="card modes" aria-label="Display mode">
+    <button data-mode="standard" class="seg on">Standard</button>
+    <button data-mode="sunlight" class="seg">Sunlight</button>
+    <button data-mode="battery" class="seg">AMOLED</button>
+  </section>
+
+  <section class="card">
+    <h2>Currency converter</h2>
+    <div class="row">
+      <span class="mono big" id="rateTxt">1 AED = … PHP</span>
+      <button id="dirBtn" class="btn">AED → PHP</button>
+    </div>
+    <div class="row">
+      <input id="amt" type="number" inputmode="decimal" value="100" min="0" aria-label="Amount">
+      <span class="mono big" id="convOut">—</span>
+    </div>
+    <p class="note" id="rateSrc"></p>
+  </section>
+
+  <section class="card">
+    <h2>ADNOC receipt reference</h2>
+    <table class="tbl">
+      <tr><td>Unit price</td><td class="mono">4.16 AED/L</td></tr>
+      <tr><td>Fill-up</td><td class="mono">67.00 L</td></tr>
+      <tr><td>Net</td><td class="mono">265.45 AED</td></tr>
+      <tr><td>VAT 5%</td><td class="mono">13.27 AED</td></tr>
+      <tr class="tot"><td>Total (earns ADNOC Rewards)</td><td class="mono">278.72 AED</td></tr>
+    </table>
+    <p class="note" id="receiptPhp"></p>
+  </section>
+
+  <section class="card">
+    <h2>Fill-up cost</h2>
+    <label class="row" for="vol"><span>Tank volume</span><span class="mono big"><output id="volOut">67</output> L</span></label>
+    <input id="vol" type="range" min="10" max="100" value="67">
+    <div class="row presets"><button class="btn ghost" data-v="50">50 L</button><button class="btn ghost" data-v="67">67 L sports car</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Fuel matrix: UAE vs Philippines</h2>
+    <p class="note">UAE: ADNOC / Emarat / ENOC · PH: Petron / Shell / Caltex (Metro Manila & Luzon avg). Tap a price to edit it.</p>
+    <div class="scroll"><table class="tbl matrix" id="matrix"></table></div>
+    <p class="note" id="matrixNote"></p>
+  </section>
+
+  <section class="card">
+    <h2>Area localizer</h2>
+    <ul class="areas">
+      <li><b>Jebel Ali Free Zone (JAFZA)</b> – ADNOC and ENOC outlets along the JAFZA and Sheikh Zayed Road corridor.</li>
+      <li><b>Discovery Gardens</b> – Nearby stations on Al Furjan / Jebel Ali Hills side; check ENOC Link stations.</li>
+      <li><b>The Gardens</b> – Short drive to AGAC-area service stations and the E11 corridor.</li>
+    </ul>
+    <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/fuel+station+near+Jebel+Ali">Open nearby stations</a>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2>Fuel &amp; energy news</h2><button id="refreshNews" class="btn ghost">Refresh</button></div>
+    <p class="note" id="newsStatus"></p>
+    <ul id="news" class="news"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Add to Home Screen</h2>
+    <button id="iosBtn" class="btn">iPhone / iPad guide</button>
+  </section>
+  <p class="note foot">Prices marked as reference are editable estimates, not official figures. Check ADNOC, ENOC and the UAE Fuel Price Committee for the official monthly prices.</p>
+</main>
+
+<div id="iosModal" class="modal" hidden>
+  <div class="sheet">
+    <h2>Install on iPhone</h2>
+    <ol>
+      <li>Open this page in <b>Safari</b>.</li>
+      <li>Tap the <b>Share</b> icon.</li>
+      <li>Choose <b>Add to Home Screen</b>.</li>
+      <li>Tap <b>Add</b>. The app opens full screen, even offline.</li>
+    </ol>
+    <button id="iosClose" class="btn">Got it</button>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="js/news-fetcher.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
