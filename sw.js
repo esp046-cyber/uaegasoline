@@ -1,10 +1,10 @@
-const CACHE = 'dubai-fuel-v1.0.0';
+const CACHE = 'dubai-fuel-v1.0.1';
 const CORE = ['./', 'index.html', 'offline.html', 'css/styles.css', 'js/app.js', 'js/news-fetcher.js',
   'manifest.webmanifest', 'favicon.svg', 'apple-touch-icon.png',
   'icons/icon-72.png', 'icons/icon-96.png', 'icons/icon-128.png', 'icons/icon-144.png', 'icons/icon-152.png',
   'icons/icon-192.png', 'icons/icon-384.png', 'icons/icon-512.png',
   'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'];
-const DYNAMIC = /open\.er-api\.com|exchangerate-api|rss2json|reddit\.com|api\.allorigins/;
+const DYNAMIC = /open\.er-api\.com|exchangerate-api|rss2json|reddit\.com|api\.allorigins|api\.codetabs/;
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));

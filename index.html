@@ -62,7 +62,7 @@
       <input id="amt" type="number" inputmode="decimal" value="100" min="0" aria-label="Amount">
       <span class="mono big" id="convOut">—</span>
     </div>
-    <p class="note" id="rateSrc"></p>
+    <p class="note"><span id="fxBadge" class="pill">Checking FX…</span> <span id="rateSrc"></span></p>
   </section>
 
   <section class="card">
@@ -88,7 +88,9 @@
     <h2>Fuel matrix: UAE vs Philippines</h2>
     <p class="note">UAE: ADNOC / Emarat / ENOC · PH: Petron / Shell / Caltex (Metro Manila & Luzon avg). Tap a price to edit it.</p>
     <div class="scroll"><table class="tbl matrix" id="matrix"></table></div>
+    <p class="note" id="priceStatus"></p>
     <p class="note" id="matrixNote"></p>
+    <div class="row"><button id="syncPrices" class="btn ghost">Sync UAE prices</button><button id="resetPrices" class="btn ghost">Reset to baseline</button></div>
   </section>
 
   <section class="card">
@@ -105,13 +107,15 @@
     <div class="row"><h2>Fuel &amp; energy news</h2><button id="refreshNews" class="btn ghost">Refresh</button></div>
     <p class="note" id="newsStatus"></p>
     <ul id="news" class="news"></ul>
+    <h3 class="sub2">Official sources</h3>
+    <div id="fallbackCards" class="fallback"></div>
   </section>
 
   <section class="card">
     <h2>Add to Home Screen</h2>
     <button id="iosBtn" class="btn">iPhone / iPad guide</button>
   </section>
-  <p class="note foot">Prices marked as reference are editable estimates, not official figures. Check ADNOC, ENOC and the UAE Fuel Price Committee for the official monthly prices.</p>
+  <p class="note foot">UAE prices follow the monthly UAE Fuel Price Committee announcement. Philippine prices are Metro Manila benchmark averages that change weekly: edit them or check the DOE oil monitor. Exchange rates update live.</p>
 </main>
 
 <div id="iosModal" class="modal" hidden>
