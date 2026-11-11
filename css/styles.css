@@ -77,3 +77,49 @@ body.sunlight-mode .tbl th{color:#000}
 .fallback a{display:block;padding:12px;border:1.5px solid var(--line);border-radius:12px;color:var(--text);text-decoration:none;font-weight:700;font-size:.88rem}
 .fallback a small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
 .pill.warn{color:var(--accent)}
+
+/* ---- Fuel matrix: scrollable table on wide screens, stacked cards on phones ---- */
+html,body{overflow-x:hidden}
+.mono,.num,.sub-num,.pill,output,input[type=number],.tbl td{font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.matrix{min-width:580px}
+.mcards{display:none}
+.mcard{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--card);box-shadow:0 6px 18px rgba(0,0,0,.25);min-width:0}
+.mcard header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.mcard h3{margin:0;font-size:1rem;font-weight:800;min-width:0;overflow-wrap:anywhere}
+.mcard h3 span{display:block;font-size:.78rem;font-weight:600;color:var(--muted)}
+.mcard header .pill{flex:none}
+.mcard .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mcard .cols>div{border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0}
+.mcard h4{margin:0 0 6px;font-size:.8rem}
+.mcard p{margin:0}
+.mcard .lbl{font-size:.7rem;color:var(--muted);margin-top:6px}
+.mcard .num{font:700 1rem 'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mcard .sub-num{font:500 .78rem 'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--muted)}
+.mcard footer{display:flex;gap:8px;margin-top:10px}
+.mcard footer .btn{flex:1;padding:8px 6px;font-size:.8rem}
+body.sunlight-mode .mcard{border:2px solid #000;box-shadow:none}
+body.sunlight-mode .mcard .cols>div{border:2px solid #000}
+body.battery-save .mcard{box-shadow:none;background:#0d1117}
+@media (max-width:639px){
+  .scroll{display:none}
+  .mcards{display:grid;gap:12px}
+}
+
+/* ---- Vehicle presets + FX status capsule ---- */
+.vpresets{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:2px 0 8px;margin:0 -4px}
+.vp{flex:none;scroll-snap-align:start;min-height:52px;padding:8px 14px;border-radius:99px;border:1.5px solid var(--line);background:transparent;color:var(--text);
+  font:600 .78rem Inter,sans-serif;text-align:left;cursor:pointer;transition:background .2s,transform .1s}
+.vp b{display:block;font-weight:700}.vp span{font:500 .72rem 'JetBrains Mono',monospace;color:var(--muted);font-variant-numeric:tabular-nums}
+.vp:active{transform:scale(.96)}
+.vp.on{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}.vp.on span{color:var(--accent-text)}
+body.sunlight-mode .vp{border:2px solid #000}
+select{font:600 .9rem Inter,sans-serif;padding:8px 10px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--text);min-height:44px}
+.btn.wa{background:#25D366;border-color:#25D366;color:#000;margin-top:6px}
+body.sunlight-mode .btn.wa{background:#000;border-color:#000;color:#fff}
+.fx{display:inline-flex;align-items:center;gap:9px;max-width:100%;padding:8px 14px;border-radius:99px;border:1.5px solid var(--line);
+  font:600 .8rem 'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;margin-top:6px}
+.fx .dot{flex:none;width:10px;height:10px;border-radius:50%;background:#22e07a;box-shadow:0 0 8px 2px rgba(34,224,122,.7);animation:fxpulse 2s ease-in-out infinite}
+.fx.off .dot{background:#ffb020;box-shadow:0 0 8px 2px rgba(255,176,32,.6);animation:none}
+body.sunlight-mode .fx{border:2px solid #000}
+@keyframes fxpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.8)}}
