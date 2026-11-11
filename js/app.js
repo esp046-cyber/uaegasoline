@@ -151,5 +151,5 @@
   addEventListener('online', refreshAll);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) syncFx(); });
 
-  if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 })();
