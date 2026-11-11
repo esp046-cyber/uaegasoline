@@ -1,9 +1,9 @@
-const CACHE = 'dubai-fuel-v1.0.1';
-const CORE = ['./', 'index.html', 'offline.html', 'css/styles.css', 'js/app.js', 'js/news-fetcher.js',
-  'manifest.webmanifest', 'favicon.svg', 'apple-touch-icon.png',
-  'icons/icon-72.png', 'icons/icon-96.png', 'icons/icon-128.png', 'icons/icon-144.png', 'icons/icon-152.png',
-  'icons/icon-192.png', 'icons/icon-384.png', 'icons/icon-512.png',
-  'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'];
+const CACHE = 'dubai-fuel-v1.0.2';
+const CORE = ['./', './index.html', './offline.html', './css/styles.css', './js/app.js', './js/news-fetcher.js',
+  './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png',
+  './icons/icon-72.png', './icons/icon-96.png', './icons/icon-128.png', './icons/icon-144.png', './icons/icon-152.png',
+  './icons/icon-192.png', './icons/icon-384.png', './icons/icon-512.png',
+  './icons/icon-maskable-192.png', './icons/icon-maskable-512.png'];
 const DYNAMIC = /open\.er-api\.com|exchangerate-api|rss2json|reddit\.com|api\.allorigins|api\.codetabs/;
 
 self.addEventListener('install', e => {
@@ -22,7 +22,7 @@ async function staleWhileRevalidate(req) {
   const cache = await caches.open(CACHE);
   const hit = await cache.match(req);
   const net = fetch(req).then(res => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => null);
-  return hit || (await net) || cache.match('offline.html');
+  return hit || (await net) || cache.match('./offline.html');
 }
 self.addEventListener('fetch', e => {
   const req = e.request;
@@ -31,7 +31,7 @@ self.addEventListener('fetch', e => {
   if (DYNAMIC.test(url.href)) return e.respondWith(networkFirst(req));
   if (req.mode === 'navigate') {
     return e.respondWith(fetch(req).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put(req, c)); return r; })
-      .catch(async () => (await caches.match(req)) || (await caches.match('index.html')) || caches.match('offline.html')));
+      .catch(async () => (await caches.match(req)) || (await caches.match('./index.html')) || caches.match('./offline.html')));
   }
   if (url.origin === location.origin || /fonts\.(googleapis|gstatic)\.com/.test(url.host)) {
     e.respondWith(staleWhileRevalidate(req));
