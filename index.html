@@ -62,7 +62,7 @@
       <input id="amt" type="number" inputmode="decimal" value="100" min="0" aria-label="Amount">
       <span class="mono big" id="convOut">—</span>
     </div>
-    <p class="note"><span id="fxBadge" class="pill">Checking FX…</span> <span id="rateSrc"></span></p>
+    <div id="fxPill" class="fx" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span></div>
   </section>
 
   <section class="card">
@@ -80,14 +80,24 @@
   <section class="card">
     <h2>Fill-up cost</h2>
     <label class="row" for="vol"><span>Tank volume</span><span class="mono big"><output id="volOut">67</output> L</span></label>
-    <input id="vol" type="range" min="10" max="100" value="67">
-    <div class="row presets"><button class="btn ghost" data-v="50">50 L</button><button class="btn ghost" data-v="67">67 L sports car</button></div>
+    <div class="vpresets" id="vpresets" role="group" aria-label="Vehicle presets">
+      <button class="vp" data-v="45"><b>Compact / Sedan</b><span>45 L</span></button>
+      <button class="vp" data-v="55"><b>Crossover / SUV</b><span>55 L</span></button>
+      <button class="vp" data-v="67"><b>Sports Car</b><span>67 L · receipt</span></button>
+      <button class="vp" data-v="100"><b>Land Cruiser</b><span>100 L</span></button>
+      <button class="vp" data-v="140"><b>Patrol Dual-Tank</b><span>140 L</span></button>
+    </div>
+    <input id="vol" type="range" min="10" max="140" value="67" aria-label="Tank volume in litres">
+    <div class="row"><label for="gradeSel">Fuel grade</label>
+      <select id="gradeSel"><option value="0">Super 98</option><option value="1">Special 95</option><option value="2">E-Plus 91</option><option value="3">Diesel</option></select></div>
+    <button id="waBtn" class="btn wa" style="width:100%">Share on WhatsApp</button>
   </section>
 
   <section class="card">
     <h2>Fuel matrix: UAE vs Philippines</h2>
     <p class="note">UAE: ADNOC / Emarat / ENOC · PH: Petron / Shell / Caltex (Metro Manila & Luzon avg). Tap a price to edit it.</p>
     <div class="scroll"><table class="tbl matrix" id="matrix"></table></div>
+    <div class="mcards" id="matrixCards"></div>
     <p class="note" id="priceStatus"></p>
     <p class="note" id="matrixNote"></p>
     <div class="row"><button id="syncPrices" class="btn ghost">Sync UAE prices</button><button id="resetPrices" class="btn ghost">Reset to baseline</button></div>

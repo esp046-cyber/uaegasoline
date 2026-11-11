@@ -1,4 +1,4 @@
-const CACHE = 'dubai-fuel-v1.0.2';
+const CACHE = 'dubai-fuel-v1.0.4';
 const CORE = ['./', './index.html', './offline.html', './css/styles.css', './js/app.js', './js/news-fetcher.js',
   './manifest.webmanifest', './favicon.svg', './apple-touch-icon.png',
   './icons/icon-72.png', './icons/icon-96.png', './icons/icon-128.png', './icons/icon-144.png', './icons/icon-152.png',
