@@ -71,3 +71,9 @@ body.sunlight-mode .tbl th{color:#000}
 .ptr.on{transform:translate(-50%,0)}
 @media (min-width:768px){body{padding-top:28px}h1{font-size:1.8rem}.card{padding:22px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.sub2{margin:14px 0 6px;font-size:.85rem;color:var(--muted)}
+.fallback{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.fallback a{display:block;padding:12px;border:1.5px solid var(--line);border-radius:12px;color:var(--text);text-decoration:none;font-weight:700;font-size:.88rem}
+.fallback a small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+.pill.warn{color:var(--accent)}
