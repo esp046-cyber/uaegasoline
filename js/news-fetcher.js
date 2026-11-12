@@ -2,26 +2,35 @@
 (() => {
   const gn = q => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-AE&gl=AE&ceid=AE:en`;
   const FEEDS = [
-    { name: 'UAE fuel prices', url: gn('UAE fuel prices committee petrol diesel') },
-    { name: 'Emirates news', url: gn('Emirates petrol diesel announcement') },
-    { name: 'Reddit r/dubai', url: 'https://www.reddit.com/r/dubai/search.rss?q=fuel+OR+petrol&restrict_sr=1&sort=new' },
-    { name: 'Global oil', url: gn('oil prices Brent crude') }
+    { name: 'UAE fuel prices', cat: 'uae', url: gn('UAE fuel prices committee petrol diesel') },
+    { name: 'Emirates news', cat: 'uae', url: gn('Emirates petrol diesel announcement') },
+    { name: 'Dubai Salik & traffic', cat: 'traffic', url: gn('Dubai Salik RTA traffic toll') },
+    { name: 'Philippines DOE', cat: 'ph', url: gn('Philippines DOE fuel price rollback hike pump') },
+    { name: 'Reddit r/dubai', cat: 'uae', url: 'https://www.reddit.com/r/dubai/search.rss?q=fuel+OR+petrol&restrict_sr=1&sort=new' },
+    { name: 'Global oil', cat: 'uae', url: gn('oil prices Brent crude') }
   ];
   const FALLBACK_CARDS = [
-    { title: 'Gulf News', note: 'UAE energy & fuel', url: 'https://gulfnews.com/business/energy' },
-    { title: 'Khaleej Times', note: 'UAE petrol & diesel', url: 'https://www.khaleejtimes.com/business/energy' },
-    { title: 'DOE Philippines', note: 'Oil price monitor', url: 'https://doe.gov.ph/' }
+    { title: 'Gulf News', note: 'UAE energy & fuel', cat: 'uae', url: 'https://gulfnews.com/business/energy' },
+    { title: 'Khaleej Times', note: 'UAE petrol & diesel', cat: 'uae', url: 'https://www.khaleejtimes.com/business/energy' },
+    { title: 'RTA Dubai', note: 'Salik & traffic updates', cat: 'traffic', url: 'https://www.rta.ae/' },
+    { title: 'DOE Philippines', note: 'Oil price monitor', cat: 'ph', url: 'https://doe.gov.ph/' }
   ];
-  const KEY = 'dubaifuel.news.v2';
+  const FALLBACK_ITEMS = () => FALLBACK_CARDS.map(c => ({ source: c.title, title: `${c.title}: ${c.note}`, link: c.url, date: '', cat: c.cat }));
+  const KEY = 'dubaifuel.news.v3';
   /* Endpoints tried in order; each returns {items} so one blocked service never breaks the feed. */
   const ENDPOINTS = [
-    async u => { const d = await (await t(fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u)))).json();
+    async u => { const d = await (await fetchT('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u))).json();
       if (d.status !== 'ok') throw 0; return d.items.map(i => ({ title: i.title, link: i.link, date: i.pubDate, desc: i.description })); },
-    async u => parseXml(await (await t(fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(u)))).text()),
-    async u => parseXml(await (await t(fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)))).text()),
-    async u => parseXml(await (await t(fetch(u))).text()) // direct, works when the source sends CORS headers
+    async u => parseXml(await (await fetchT('https://api.allorigins.win/raw?url=' + encodeURIComponent(u))).text()),
+    async u => parseXml(await (await fetchT('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u))).text()),
+    async u => parseXml(await (await fetchT(u)).text()) // direct, works when the source sends CORS headers
   ];
-  const t = (p, ms = 8000) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
+  /* Every network call is aborted after 4s so nothing can hang. */
+  const fetchT = async (url, ms = 4000, opts = {}) => {
+    const c = new AbortController(), id = setTimeout(() => c.abort(), ms);
+    try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(id); }
+  };
+  const withDeadline = (p, ms, fb) => Promise.race([p.catch(() => fb), new Promise(r => setTimeout(() => r(fb), ms))]);
   const strip = h => (h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&amp;/g, ' ').replace(/\s+/g, ' ').trim();
 
   function parseXml(text) {
@@ -43,7 +52,7 @@
   async function load(force = false) {
     let cached = null; try { cached = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) {}
     if (!force && cached && Date.now() - cached.t < 15 * 60 * 1000) return { items: cached.items, t: cached.t };
-    const lists = await Promise.all(FEEDS.map(async f => (await fetchFeed(f.url)).slice(0, 8).map(i => ({ source: f.name, title: strip(i.title), link: i.link, date: i.date }))));
+    const lists = await Promise.all(FEEDS.map(async f => (await withDeadline(fetchFeed(f.url), 6000, [])).slice(0, 8).map(i => ({ source: f.name, title: strip(i.title), link: i.link, date: i.date, cat: f.cat }))));
     const all = lists.flat().filter(x => x.title);
     if (all.length) {
       all.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -51,7 +60,8 @@
       try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (_) {}
       return out;
     }
-    return cached ? { items: cached.items, t: cached.t, offline: true } : { items: [], t: 0, offline: true };
+    if (cached && cached.items.length) return { items: cached.items, t: cached.t, offline: true };
+    return { items: FALLBACK_ITEMS(), t: Date.now(), offline: true, fallback: true };   // structured fallback, never empty
   }
 
   /* Live AED->PHP from open.er-api.com first, then a second provider, then cache. */
@@ -59,7 +69,7 @@
     const RK = 'dubaifuel.rate.v1';
     for (const u of ['https://open.er-api.com/v6/latest/AED', 'https://api.exchangerate-api.com/v4/latest/AED']) {
       try {
-        const d = await (await t(fetch(u, { cache: 'no-store' }), 6000)).json();
+        const d = await (await fetchT(u, 4000, { cache: 'no-store' })).json();
         const rate = d.rates && d.rates.PHP;
         if (rate > 5 && rate < 40) { try { localStorage.setItem(RK, JSON.stringify({ rate, t: Date.now() })); } catch (_) {} return { rate, live: true, t: Date.now() }; }
       } catch (_) {}
