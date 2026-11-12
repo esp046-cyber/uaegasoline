@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Dubai Fuel Monitor – UAE vs Philippines Fuel Prices | Jebel Ali</title>
 <meta name="description" content="Daily UAE vs Philippines fuel price comparison, AED to PHP converter and fuel news for Jebel Ali, Discovery Gardens and Sheikh Zayed Road.">
-<link rel="canonical" href="https://esp046-cyber.github.io/dubaijebelalinews/">
+<link rel="canonical" href="https://esp046-cyber.github.io/uaegasoline/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Dubai Fuel Monitor – UAE vs PH Prices">
 <meta property="og:description" content="Live AED↔PHP fuel comparison and daily fuel news for Dubai.">
-<meta property="og:url" content="https://esp046-cyber.github.io/dubaijebelalinews/">
-<meta property="og:image" content="https://esp046-cyber.github.io/dubaijebelalinews/og-image.png">
+<meta property="og:url" content="https://esp046-cyber.github.io/uaegasoline/">
+<meta property="og:image" content="https://esp046-cyber.github.io/uaegasoline/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Dubai Fuel Monitor – UAE vs PH Prices">
-<meta name="twitter:image" content="https://esp046-cyber.github.io/dubaijebelalinews/og-image.png">
+<meta name="twitter:image" content="https://esp046-cyber.github.io/uaegasoline/og-image.png">
 <meta name="theme-color" content="#0a0d14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -32,20 +32,24 @@
 <body>
 <div id="ptr" class="ptr" aria-hidden="true">Release to refresh</div>
 <header class="top">
-  <div>
-    <h1>Dubai Fuel Monitor</h1>
-    <p class="sub">UAE vs Philippines · Jebel Ali</p>
+  <div><h1>Dubai Fuel Monitor</h1><p class="sub">UAE vs Philippines · Jebel Ali</p></div>
+  <div class="hbtns">
+    <button id="helpBtn" class="btn ghost" aria-label="How to install on iPhone">?</button>
+    <button id="shareBtn" class="btn" aria-label="Share fuel prices">Share</button>
   </div>
-  <button id="shareBtn" class="btn">Share</button>
 </header>
-
 <div id="installBar" class="install" hidden>
   <span>Install Dubai Fuel on your device</span>
   <button id="installBtn" class="btn">Install</button>
-  <button id="installClose" class="btn ghost" aria-label="Dismiss">✕</button>
+  <button id="installClose" class="btn ghost" aria-label="Dismiss install banner">✕</button>
 </div>
-
 <main>
+  <section class="trackers" aria-label="Price announcement trackers"><div class="trk" id="trkUae"></div><div class="trk" id="trkPh"></div></section>
+  <section id="tipBanner" class="card tip" hidden>
+    <div class="row"><h2>UAE Driving Efficiency</h2><button id="tipClose" class="btn ghost" aria-label="Dismiss driving efficiency tip">✕</button></div>
+    <p class="note" id="tipText"></p>
+  </section>
+
   <section class="card modes" aria-label="Display mode">
     <button data-mode="standard" class="seg on">Standard</button>
     <button data-mode="sunlight" class="seg">Sunlight</button>
@@ -54,15 +58,12 @@
 
   <section class="card">
     <h2>Currency converter</h2>
+    <div class="row"><span class="mono big" id="rateTxt">1 AED = … PHP</span><button id="dirBtn" class="btn">AED → PHP</button></div>
     <div class="row">
-      <span class="mono big" id="rateTxt">1 AED = … PHP</span>
-      <button id="dirBtn" class="btn">AED → PHP</button>
-    </div>
-    <div class="row">
-      <input id="amt" type="number" inputmode="decimal" value="100" min="0" aria-label="Amount">
+      <input id="amt" type="number" inputmode="decimal" step="any" min="0" value="100" aria-label="Amount to convert">
       <span class="mono big" id="convOut">—</span>
     </div>
-    <div id="fxPill" class="fx" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span></div>
+    <div id="fxPill" class="fx" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span><span id="fxAge" class="fxage"></span></div>
   </section>
 
   <section class="card">
@@ -75,27 +76,59 @@
       <tr class="tot"><td>Total (earns ADNOC Rewards)</td><td class="mono">278.72 AED</td></tr>
     </table>
     <p class="note" id="receiptPhp"></p>
+    <div class="strip" aria-label="Loyalty and cashback">
+      <div><span class="lbl">ADNOC Rewards (<span id="ptsL">67</span> L)</span><b class="mono" id="pts">—</b><small>points, scaled from 1,743 per 67 L</small></div>
+      <div><label class="lbl" for="cbSel">Card fuel rebate</label>
+        <select id="cbSel"><option value="0">0%</option><option value="5">5%</option><option value="10">10%</option></select></div>
+      <div><span class="lbl">Net price</span><b class="mono" id="netAed">—</b><small id="netPhp"></small></div>
+    </div>
+    <h3 class="sub2">Super 98 &amp; Special 95: Jun–Nov 2026 (AED/L)</h3>
+    <div id="spark" class="spark"></div><p class="note" id="sparkNote"></p>
   </section>
 
   <section class="card">
     <h2>Fill-up cost</h2>
     <label class="row" for="vol"><span>Tank volume</span><span class="mono big"><output id="volOut">67</output> L</span></label>
     <div class="vpresets" id="vpresets" role="group" aria-label="Vehicle presets">
-      <button class="vp" data-v="45"><b>Compact / Sedan</b><span>45 L</span></button>
-      <button class="vp" data-v="55"><b>Crossover / SUV</b><span>55 L</span></button>
-      <button class="vp" data-v="67"><b>Sports Car</b><span>67 L · receipt</span></button>
-      <button class="vp" data-v="100"><b>Land Cruiser</b><span>100 L</span></button>
-      <button class="vp" data-v="140"><b>Patrol Dual-Tank</b><span>140 L</span></button>
+      <button class="vp" data-v="35"><b>Hatchback</b><span>35 L</span></button>
+      <button class="vp" data-v="45"><b>Sedan</b><span>45 L</span></button>
+      <button class="vp" data-v="55"><b>Crossover</b><span>55 L</span></button>
+      <button class="vp" data-v="67"><b>Sports Car</b><span>67 L · baseline</span></button>
+      <button class="vp" data-v="100"><b>SUV / Patrol</b><span>100 L</span></button>
     </div>
     <input id="vol" type="range" min="10" max="140" value="67" aria-label="Tank volume in litres">
     <div class="row"><label for="gradeSel">Fuel grade</label>
       <select id="gradeSel"><option value="0">Super 98</option><option value="1">Special 95</option><option value="2">E-Plus 91</option><option value="3">Diesel</option></select></div>
-    <button id="waBtn" class="btn wa" style="width:100%">Share on WhatsApp</button>
+    <h3 class="sub2">Pit-stop add-ons</h3>
+    <div class="pillrow" id="addons">
+      <button class="chip ad" data-k="coffee" aria-pressed="false">Oasis Coffee +12 AED</button>
+      <button class="chip ad" data-k="manual" aria-pressed="false">Manual Wash +40 AED</button>
+      <button class="chip ad" data-k="auto" aria-pressed="false">Auto Wash +30 AED</button>
+    </div>
+    <div class="stop" id="stopOut"></div>
+    <h3 class="sub2">Quick cash fill-up</h3>
+    <div class="pillrow" id="qbPills">
+      <button class="chip qb" data-cur="AED" data-amt="50">Fill AED 50</button>
+      <button class="chip qb" data-cur="AED" data-amt="100">Fill AED 100</button>
+      <button class="chip qb" data-cur="PHP" data-amt="1000">Fill ₱1,000</button>
+      <button class="chip qb" data-cur="PHP" data-amt="2000">Fill ₱2,000</button>
+    </div>
+    <p class="note" id="qbOut"></p>
+    <p class="remit" id="remit"></p>
+    <div class="row"><button id="waBtn" class="btn wa" style="flex:1">Share on WhatsApp</button><button id="storyBtn" class="btn" style="flex:1">Create Story Card</button></div>
   </section>
 
-  <section class="card">
+  <section class="card" id="matrixSec">
     <h2>Fuel matrix: UAE vs Philippines</h2>
-    <p class="note">UAE: ADNOC / Emarat / ENOC · PH: Petron / Shell / Caltex (Metro Manila & Luzon avg). Tap a price to edit it.</p>
+    <div class="row"><span class="note">Primary display</span>
+      <div class="duo" role="group" aria-label="Primary display currency"><button class="seg on" data-prim="AED">AED</button><button class="seg" data-prim="PHP">PHP</button></div></div>
+    <details class="drawer"><summary>Octane &amp; Engine Guide</summary>
+      <ul>
+        <li><b>Super 98</b> (closest PH match: RON 100 / Blaze): high-compression, turbocharged and performance engines, or any car whose manual asks for 98.</li>
+        <li><b>Special 95</b> (PH: RON 95 / Premium Unleaded): the standard choice for most sedans, crossovers and SUVs.</li>
+        <li><b>E-Plus 91</b> (PH: RON 91 / Regular Unleaded): fleet and commercial vehicles, or cars whose manual explicitly allows 91.</li>
+        <li>In UAE desert heat and heavy loads, a grade below your manual's requirement can cause knocking. Always follow the owner's manual.</li>
+      </ul></details>
     <div class="scroll"><table class="tbl matrix" id="matrix"></table></div>
     <div class="mcards" id="matrixCards"></div>
     <p class="note" id="priceStatus"></p>
@@ -104,40 +137,70 @@
   </section>
 
   <section class="card">
-    <h2>Area localizer</h2>
-    <ul class="areas">
-      <li><b>Jebel Ali Free Zone (JAFZA)</b> – ADNOC and ENOC outlets along the JAFZA and Sheikh Zayed Road corridor.</li>
-      <li><b>Discovery Gardens</b> – Nearby stations on Al Furjan / Jebel Ali Hills side; check ENOC Link stations.</li>
-      <li><b>The Gardens</b> – Short drive to AGAC-area service stations and the E11 corridor.</li>
-    </ul>
-    <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/fuel+station+near+Jebel+Ali">Open nearby stations</a>
+    <h2>Monthly fuel budget</h2>
+    <div class="row"><label for="budget">Allowance / cap (AED)</label>
+      <input id="budget" type="number" inputmode="decimal" step="any" min="0" value="1000" aria-label="Monthly fuel budget in AED"></div>
+    <p class="note" id="budgetOut"></p>
+  </section>
+
+  <details class="card drawer" id="commute"><summary>Commute &amp; Toll Estimator</summary>
+    <div class="row"><label for="route">Route</label>
+      <select id="route"><option value="65">Discovery Gardens → Downtown Dubai (65 km round trip)</option>
+        <option value="240">Jebel Ali → Abu Dhabi Corniche (240 km round trip)</option>
+        <option value="85">Dubai Marina → Sharjah (85 km round trip)</option>
+        <option value="custom">Custom distance</option></select></div>
+    <div class="row" id="customKmWrap" hidden><label for="customKm">Round trip (km)</label>
+      <input id="customKm" type="number" inputmode="decimal" step="any" min="0" value="50" aria-label="Custom round trip distance in kilometres"></div>
+    <div class="row"><label for="eff">Fuel economy</label>
+      <select id="eff"><option value="8">8 km/L (SUV)</option><option value="12" selected>12 km/L (Sedan)</option><option value="16">16 km/L (Hybrid)</option></select></div>
+    <div class="row"><label for="gates">Salik gates</label>
+      <select id="gates"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
+      <div class="duo" role="group" aria-label="Salik rate"><button class="chip sk on" data-rate="4">AED 4 off-peak</button><button class="chip sk" data-rate="6">AED 6 peak</button></div></div>
+    <div class="row"><span>Carpool split</span>
+      <div class="pillrow" role="group" aria-label="Carpool split">
+        <button class="chip cp on" data-n="1">Solo</button><button class="chip cp" data-n="2">÷ 2</button><button class="chip cp" data-n="3">÷ 3</button><button class="chip cp" data-n="4">÷ 4</button></div></div>
+    <div id="commuteOut" class="stop"></div>
+    <p class="note">Salik rates are as entered here; confirm current tariffs with RTA.</p>
+  </details>
+
+  <section class="card">
+    <h2>Nearest stations</h2>
+    <div class="row"><label for="area">Area</label>
+      <select id="area"><option>Jebel Ali</option><option>Discovery Gardens</option><option>Al Furjan</option><option>Sheikh Zayed Road</option></select></div>
+    <div id="stationsOut"></div>
+    <p class="note">Links open a map search, so check the pin before you drive.</p>
   </section>
 
   <section class="card">
     <div class="row"><h2>Fuel &amp; energy news</h2><button id="refreshNews" class="btn ghost">Refresh</button></div>
+    <div class="pillrow" id="newsFilters" role="group" aria-label="News category">
+      <button class="chip nf on" data-cat="all">All Updates</button><button class="chip nf" data-cat="uae">UAE Fuel Committee</button>
+      <button class="chip nf" data-cat="traffic">Dubai Traffic &amp; Salik</button><button class="chip nf" data-cat="ph">Philippines DOE</button></div>
     <p class="note" id="newsStatus"></p>
     <ul id="news" class="news"></ul>
     <h3 class="sub2">Official sources</h3>
     <div id="fallbackCards" class="fallback"></div>
   </section>
-
-  <section class="card">
-    <h2>Add to Home Screen</h2>
-    <button id="iosBtn" class="btn">iPhone / iPad guide</button>
-  </section>
   <p class="note foot">UAE prices follow the monthly UAE Fuel Price Committee announcement. Philippine prices are Metro Manila benchmark averages that change weekly: edit them or check the DOE oil monitor. Exchange rates update live.</p>
 </main>
 
-<div id="iosModal" class="modal" hidden>
-  <div class="sheet">
-    <h2>Install on iPhone</h2>
-    <ol>
-      <li>Open this page in <b>Safari</b>.</li>
-      <li>Tap the <b>Share</b> icon.</li>
-      <li>Choose <b>Add to Home Screen</b>.</li>
-      <li>Tap <b>Add</b>. The app opens full screen, even offline.</li>
+<div id="iosModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="iosTitle">
+  <div class="sheet"><div class="grab" aria-hidden="true"></div>
+    <h2 id="iosTitle">Install on iPhone</h2>
+    <ol class="steps">
+      <li><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg><span><b>1.</b> Tap the Safari Share icon.</span></li>
+      <li><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg><span><b>2.</b> Scroll down and select “Add to Home Screen”.</span></li>
+      <li><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg><span><b>3.</b> Launch it full-screen from your iPhone home screen.</span></li>
     </ol>
-    <button id="iosClose" class="btn">Got it</button>
+    <button id="iosGot" class="btn" style="width:100%">Got it</button>
+    <button id="iosHide" class="btn ghost" style="width:100%;margin-top:8px">Don’t show again</button>
+  </div>
+</div>
+<div id="storyModal" class="modal" hidden role="dialog" aria-modal="true" aria-label="Story card preview">
+  <div class="sheet"><div class="grab" aria-hidden="true"></div>
+    <img id="storyImg" class="storyimg" alt="Story card preview">
+    <div class="row"><button id="storyDl" class="btn" style="flex:1">Download</button><button id="storyShare" class="btn wa" style="flex:1">Share</button></div>
+    <button id="storyClose" class="btn ghost" style="width:100%">Close</button>
   </div>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
