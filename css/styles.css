@@ -123,3 +123,60 @@ body.sunlight-mode .btn.wa{background:#000;border-color:#000;color:#fff}
 .fx.off .dot{background:#ffb020;box-shadow:0 0 8px 2px rgba(255,176,32,.6);animation:none}
 body.sunlight-mode .fx{border:2px solid #000}
 @keyframes fxpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.8)}}
+
+/* ---- v1.0.5: cards, safe area, touch targets ---- */
+:root{--card:#111827;--edge:rgba(255,255,255,.07);--blur:none}
+body.battery-save{--card:#000;--edge:rgba(255,255,255,.07)}
+body.sunlight-mode{--card:#fff;--edge:#000}
+.card,.mcard,.install{background:var(--card);border:1px solid var(--edge);border-radius:16px;-webkit-backdrop-filter:none;backdrop-filter:none;transition:background-color .25s}
+.mcard .cols>div{border:1px solid var(--edge)}
+body.battery-save .mcard{background:#000}
+body.sunlight-mode .card,body.sunlight-mode .mcard,body.sunlight-mode .install{border:2px solid #000}
+body{padding-bottom:0}
+main{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+button,.btn,.seg,.vp,select,.fallback a{min-height:44px;min-width:44px}
+.news .sh{min-height:44px}
+.fxage{color:var(--muted);font-weight:500}.fxage:not(:empty)::before{content:'·';margin-right:8px}
+.num,.sub-num,.mono,.vp span,output,.fx,.pill,.tbl td,input[type=number],.fxage{font-variant-numeric:tabular-nums}
+
+/* ---- v1.0.6 ---- */
+.hbtns{display:flex;gap:8px}
+.trackers{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-bottom:12px}
+.trk{border:1px solid var(--edge);border-radius:14px;padding:10px 12px;font-size:.82rem;background:var(--card)}
+.trk small{color:var(--muted)}
+body.sunlight-mode .trk{border:2px solid #000}
+.tip .note{margin:0;line-height:1.5}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.strip>div{border:1px solid var(--edge);border-radius:12px;padding:10px;min-width:0}
+.strip .lbl{display:block;font-size:.72rem;color:var(--muted)}.strip b{display:block;font-size:1.05rem;margin:2px 0}.strip small{color:var(--muted);font-size:.72rem}
+.spark svg{width:100%;height:auto;display:block}
+.pillrow{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:99px;border:1.5px solid var(--line);background:transparent;color:var(--text);
+  font:600 .82rem Inter,sans-serif;cursor:pointer;text-decoration:none}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+body.sunlight-mode .chip{border:2px solid #000}
+.stop .ln{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.stop .ln.tot{border-bottom:0;font-weight:800}.stop .ln span{min-width:0}
+.remit{margin:10px 0;padding:10px 12px;border-radius:12px;border:1px dashed var(--accent);font-size:.85rem}
+.duo{display:flex;gap:6px}.duo .seg{min-width:64px}
+.drawer{padding:0}.drawer>summary{cursor:pointer;font-weight:700;padding:12px 4px;min-height:44px;list-style:none}
+.drawer>summary::after{content:'▾';float:right}.drawer[open]>summary::after{content:'▴'}
+details.card.drawer{padding:8px 16px 16px}
+.drawer ul{margin:0;padding-left:18px;font-size:.85rem}.drawer li{margin-bottom:6px}
+select{max-width:100%}
+.lock{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.lock .btn{padding:6px 10px;font-size:.75rem}
+.mcard.sel{border-color:var(--accent)}
+.stn{margin-bottom:12px}.stn b{display:block;margin-bottom:6px;font-size:.88rem}
+.steps{list-style:none;padding:0;margin:12px 0}
+.steps li{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+.steps svg{flex:none;color:var(--accent)}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.sheet{max-height:92vh;overflow-y:auto}
+.storyimg{display:block;width:auto;max-width:100%;max-height:55vh;margin:0 auto 12px;border-radius:12px}
+/* ---- audit: focus rings, 150ms theme transitions ---- */
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:10px}
+body.sunlight-mode :focus-visible{outline-color:#000;outline-width:4px}
+summary:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+body,.card,.mcard,.trk,.install,.btn,.seg,.chip,.vp,select,input,.sheet,.strip>div,.pill{transition:background-color 150ms cubic-bezier(.4,0,.2,1),color 150ms cubic-bezier(.4,0,.2,1),border-color 150ms cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
