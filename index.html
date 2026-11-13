@@ -43,64 +43,40 @@
   <button id="installBtn" class="btn">Install</button>
   <button id="installClose" class="btn ghost" aria-label="Dismiss install banner">✕</button>
 </div>
+<div id="iosBanner" class="install" hidden>
+  <span>Tap <b>Share</b>, then <b>Add to Home Screen</b> for full-screen mode.</span>
+  <button id="iosBannerHow" class="btn">How</button>
+  <button id="iosBannerClose" class="btn ghost" aria-label="Dismiss home screen tip">✕</button>
+</div>
 <main>
-  <section class="trackers" aria-label="Price announcement trackers"><div class="trk" id="trkUae"></div><div class="trk" id="trkPh"></div></section>
-  <section id="tipBanner" class="card tip" hidden>
-    <div class="row"><h2>UAE Driving Efficiency</h2><button id="tipClose" class="btn ghost" aria-label="Dismiss driving efficiency tip">✕</button></div>
-    <p class="note" id="tipText"></p>
-  </section>
-
-  <section class="card modes" aria-label="Display mode">
-    <button data-mode="standard" class="seg on">Standard</button>
-    <button data-mode="sunlight" class="seg">Sunlight</button>
-    <button data-mode="battery" class="seg">AMOLED</button>
-  </section>
-
-  <section class="card">
-    <h2>Currency converter</h2>
-    <div class="row"><span class="mono big" id="rateTxt">1 AED = … PHP</span><button id="dirBtn" class="btn">AED → PHP</button></div>
-    <div class="row">
+  <div class="fxbar acc" id="fxAcc">
+    <button class="acc-h fxh" aria-expanded="false" aria-controls="fxB" aria-label="Exchange rate and currency converter">
+      <span id="fxPill" class="fx" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span><span id="fxAge" class="fxage"></span></span><span class="chev" aria-hidden="true"></span></button>
+    <div class="acc-b" id="fxB"><div class="acc-in"><div class="fxconv">
       <input id="amt" type="number" inputmode="decimal" step="any" min="0" value="100" aria-label="Amount to convert">
+      <button id="dirBtn" class="btn">AED → PHP</button>
       <span class="mono big" id="convOut">—</span>
-    </div>
-    <div id="fxPill" class="fx" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span><span id="fxAge" class="fxage"></span></div>
+      <span id="rateTxt" hidden></span>
+    </div></div></div>
+  </div>
+
+  <section class="card" aria-label="Live UAE fuel prices">
+    <div class="strip4" id="strip" role="group" aria-label="Choose fuel grade"></div>
   </section>
 
-  <section class="card">
-    <h2>ADNOC receipt reference</h2>
-    <table class="tbl">
-      <tr><td>Unit price</td><td class="mono">4.16 AED/L</td></tr>
-      <tr><td>Fill-up</td><td class="mono">67.00 L</td></tr>
-      <tr><td>Net</td><td class="mono">265.45 AED</td></tr>
-      <tr><td>VAT 5%</td><td class="mono">13.27 AED</td></tr>
-      <tr class="tot"><td>Total (earns ADNOC Rewards)</td><td class="mono">278.72 AED</td></tr>
-    </table>
-    <p class="note" id="receiptPhp"></p>
-    <div class="strip" aria-label="Loyalty and cashback">
-      <div><span class="lbl">ADNOC Rewards (<span id="ptsL">67</span> L)</span><b class="mono" id="pts">—</b><small>points, scaled from 1,743 per 67 L</small></div>
-      <div><label class="lbl" for="cbSel">Card fuel rebate</label>
-        <select id="cbSel"><option value="0">0%</option><option value="5">5%</option><option value="10">10%</option></select></div>
-      <div><span class="lbl">Net price</span><b class="mono" id="netAed">—</b><small id="netPhp"></small></div>
-    </div>
-    <h3 class="sub2">Super 98 &amp; Special 95: Jun–Nov 2026 (AED/L)</h3>
-    <div id="spark" class="spark"></div><p class="note" id="sparkNote"></p>
-  </section>
-
-  <section class="card">
-    <h2>Fill-up cost</h2>
-    <label class="row" for="vol"><span>Tank volume</span><span class="mono big"><output id="volOut">67</output> L</span></label>
+  <section class="card" id="calc">
+    <div class="row"><h2>Fill-up cost</h2><span class="mono big"><output id="volOut">67</output> L</span></div>
+    <button id="cashReset" class="chip" hidden>↺ Reset to full tank</button>
     <div class="vpresets glide" id="vpresets" role="group" aria-label="Vehicle presets"><span class="glide-ind" aria-hidden="true"></span>
       <button class="vp" data-v="35"><b>Hatchback</b><span>35 L</span></button>
       <button class="vp" data-v="45"><b>Sedan</b><span>45 L</span></button>
       <button class="vp" data-v="55"><b>Crossover</b><span>55 L</span></button>
-      <button class="vp" data-v="67"><b>Sports Car</b><span>67 L · baseline</span></button>
-      <button class="vp" data-v="100"><b>SUV / Patrol</b><span>100 L</span></button>
+      <button class="vp" data-v="67"><b>Sports Car</b><span>67 L</span></button>
+      <button class="vp" data-v="100"><b>SUV</b><span>100 L</span></button>
+      <button class="vp" data-v="133"><b>Patrol / Dual-Tank</b><span>133 L</span></button>
     </div>
     <input id="vol" type="range" min="10" max="140" value="67" aria-label="Tank volume in litres">
     <div class="tank" aria-hidden="true"><div class="tank-fill" id="tankFill"></div><span class="tank-lbl" id="tankLbl"></span></div>
-    <div class="row"><label for="gradeSel">Fuel grade</label>
-      <select id="gradeSel"><option value="0">Super 98</option><option value="1">Special 95</option><option value="2">E-Plus 91</option><option value="3">Diesel</option></select></div>
-    <h3 class="sub2">Pit-stop add-ons</h3>
     <div class="pillrow" id="addons">
       <button class="chip ad" data-k="coffee" aria-pressed="false"><span class="ic" aria-hidden="true">☕</span> Oasis Coffee +12 AED</button>
       <button class="chip ad" data-k="manual" aria-pressed="false"><span class="ic" aria-hidden="true">🧽</span> Manual Wash +40 AED</button>
@@ -119,23 +95,39 @@
     <div class="row"><button id="waBtn" class="btn wa" style="flex:1">Share on WhatsApp</button><button id="storyBtn" class="btn" style="flex:1">Create Story Card</button></div>
   </section>
 
+  <section class="card modes" aria-label="Display mode">
+    <button data-mode="standard" class="seg on">Standard</button>
+    <button data-mode="sunlight" class="seg">Sunlight</button>
+    <button data-mode="battery" class="seg">AMOLED</button>
+  </section>
+  <section class="trackers" aria-label="Price announcement trackers"><div class="trk" id="trkUae"></div><div class="trk" id="trkPh"></div></section>
+
   <section class="card" id="matrixSec">
-    <h2>Fuel matrix: UAE vs Philippines</h2>
+    <h2>UAE vs Philippines per litre</h2>
     <p class="note" id="phNote"></p>
     <div class="row"><span class="note">Primary display</span>
       <div class="duo" role="group" aria-label="Primary display currency"><button class="seg on" data-prim="AED">AED</button><button class="seg" data-prim="PHP">PHP</button></div></div>
-    <div class="acc" id="octane"><button class="acc-h" aria-expanded="false" aria-controls="octaneB">Octane &amp; Engine Guide<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="octaneB"><div class="acc-in"><ul>
-        <li><b>Super 98</b> (closest PH match: RON 100 / Blaze): high-compression, turbocharged and performance engines, or any car whose manual asks for 98.</li>
-        <li><b>Special 95</b> (PH: RON 95 / Premium Unleaded): the standard choice for most sedans, crossovers and SUVs.</li>
-        <li><b>E-Plus 91</b> (PH: RON 91 / Regular Unleaded): fleet and commercial vehicles, or cars whose manual explicitly allows 91.</li>
-        <li>In UAE desert heat and heavy loads, a grade below your manual's requirement can cause knocking. Always follow the owner's manual.</li>
-      </ul></div></div></div>
-    <div class="scroll"><table class="tbl matrix" id="matrix"></table></div>
-    <div class="mcards" id="matrixCards"></div>
+    <div class="mwrap"><table class="tbl mtbl" id="matrix"></table></div>
     <p class="note" id="priceStatus"></p>
     <p class="note" id="matrixNote"></p>
+    <div class="acc" id="octane"><button class="acc-h" aria-expanded="false" aria-controls="octaneB">Octane &amp; Engine Guide<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="octaneB"><div class="acc-in"><ul>
+      <li><b>Super 98</b> (closest PH match: RON 97/100): high-compression, turbocharged and performance engines, or any car whose manual asks for 98.</li>
+      <li><b>Special 95</b> (PH: RON 95): the standard choice for most sedans, crossovers and SUVs.</li>
+      <li><b>E-Plus 91</b> (PH: RON 91): fleet and commercial vehicles, or cars whose manual explicitly allows 91.</li>
+      <li>In UAE desert heat and heavy loads, a grade below your manual's requirement can cause knocking. Always follow the owner's manual.</li></ul></div></div></div>
     <div class="row"><button id="syncPrices" class="btn ghost">Sync UAE prices</button><button id="resetPrices" class="btn ghost">Reset to baseline</button></div>
   </section>
+
+  <section class="card acc" id="rewardsAcc"><button class="acc-h" aria-expanded="false" aria-controls="rewardsB">Rewards, rebate &amp; 6-month trend<span class="chev" aria-hidden="true"></span></button>
+    <div class="acc-b" id="rewardsB"><div class="acc-in">
+      <div class="strip" aria-label="Loyalty and cashback">
+        <div><span class="lbl" id="rwLbl">ADNOC Rewards</span><b class="mono" id="pts">—</b><small>points, scaled from the 1,743-point reference receipt</small></div>
+        <div><label class="lbl" for="cbSel">Card fuel rebate</label><select id="cbSel"><option value="0">0%</option><option value="5">5%</option><option value="10">10%</option></select></div>
+        <div><span class="lbl">Net price</span><b class="mono" id="netAed">—</b><small id="netPhp"></small></div>
+      </div>
+      <h3 class="sub2">Super 98 &amp; Special 95: Jun–Nov 2026 (AED/L)</h3>
+      <div id="spark" class="spark"></div><p class="note" id="sparkNote"></p>
+    </div></div></section>
 
   <section class="card acc open" id="budgetAcc"><button class="acc-h" aria-expanded="true" aria-controls="budgetB">Monthly fuel budget<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="budgetB"><div class="acc-in">
     <div class="row"><label for="budget">Allowance / cap (AED)</label>
@@ -167,7 +159,7 @@
     <h2>Nearest stations</h2>
     <div class="row"><label for="area">Area</label>
       <select id="area"><option>Jebel Ali</option><option>Discovery Gardens</option><option>Al Furjan</option><option>Sheikh Zayed Road</option></select></div>
-    <div id="stationsOut"></div>
+    <div id="stationsOut" class="stns"></div>
     <p class="note">Links open a map search, so check the pin before you drive.</p>
   </section>
 
@@ -181,7 +173,17 @@
     <h3 class="sub2">Official sources</h3>
     <div id="fallbackCards" class="fallback"></div>
   </section>
-  <p class="note foot">UAE prices follow the monthly UAE Fuel Price Committee announcement. Philippine prices are Metro Manila benchmark averages that change weekly: edit them or check the DOE oil monitor. Exchange rates update live.</p>
+
+  <section class="card acc" id="receiptAcc"><button class="acc-h" aria-expanded="false" aria-controls="receiptB">ADNOC receipt reference (example)<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="receiptB"><div class="acc-in">
+    <p class="note">A fixed example: Super 98, 67 L. It does not change with the calculator above.</p>
+    <table class="tbl">
+      <tr><td>Unit price</td><td class="mono">4.16 AED/L</td></tr><tr><td>Fill-up</td><td class="mono">67.00 L</td></tr>
+      <tr><td>Net</td><td class="mono">265.45 AED</td></tr><tr><td>VAT 5%</td><td class="mono">13.27 AED</td></tr>
+      <tr class="tot"><td>Total (earns ADNOC Rewards)</td><td class="mono">278.72 AED</td></tr>
+    </table><p class="note" id="receiptPhp"></p></div></div></section>
+
+  <section class="card acc" id="tipBanner"><button class="acc-h" aria-expanded="false" aria-controls="tipB">UAE driving efficiency tips<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="tipB"><div class="acc-in"><p class="note" id="tipText"></p></div></div></section>
+  <p class="note foot">UAE prices follow the monthly UAE Fuel Price Committee announcement. Philippine prices are estimated Metro Manila averages within the DOE weekly range: tap a price to edit it. Exchange rates update live.</p>
 </main>
 
 <div id="iosModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="iosTitle">
