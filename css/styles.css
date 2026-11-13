@@ -180,3 +180,117 @@ body.sunlight-mode :focus-visible{outline-color:#000;outline-width:4px}
 summary:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 body,.card,.mcard,.trk,.install,.btn,.seg,.chip,.vp,select,input,.sheet,.strip>div,.pill{transition:background-color 150ms cubic-bezier(.4,0,.2,1),color 150ms cubic-bezier(.4,0,.2,1),border-color 150ms cubic-bezier(.4,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- v1.0.7 micro-interactions (GPU: transform/opacity only; off in AMOLED + reduced motion) ---- */
+button,.btn,.chip,.vp,.seg{transition:transform .25s cubic-bezier(.34,1.56,.64,1),background-color 150ms cubic-bezier(.4,0,.2,1),color 150ms cubic-bezier(.4,0,.2,1),border-color 150ms cubic-bezier(.4,0,.2,1)}
+button:active,.btn:active,.chip:active,.vp:active,.seg:active{transform:scale(.96)}
+.chip{position:relative;overflow:hidden}
+
+/* 2 + 13: gliding indicator behind pills */
+.glide{position:relative}
+.glide>button{position:relative;z-index:1}
+.glide-ind{position:absolute;left:0;top:0;border-radius:99px;background:var(--accent);z-index:0;pointer-events:none;
+  transition:transform .45s cubic-bezier(.34,1.56,.64,1),width .3s cubic-bezier(.4,0,.2,1),height .3s;will-change:transform}
+.glide .on{background:transparent!important;border-color:transparent!important;color:var(--accent-text)!important}
+.glide .vp.on span{color:var(--accent-text)}
+#newsFilters{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+#newsFilters .chip{flex:none}
+
+/* 4: fuel tank visualizer */
+.tank{position:relative;height:30px;border-radius:99px;border:1px solid var(--edge);overflow:hidden;margin:4px 0 12px;background:rgba(255,255,255,.04)}
+.tank-fill{position:absolute;inset:0;transform-origin:left center;background:var(--fill,#f5b83d);border-radius:99px;
+  transition:transform .3s cubic-bezier(.4,0,.2,1),background-color .3s;will-change:transform}
+.tank-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.5) 50%,transparent 80%);
+  transform:translateX(-100%);animation:shimmer 2.4s linear infinite}
+.tank-lbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 .75rem 'JetBrains Mono',monospace;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+body.sunlight-mode .tank{border:2px solid #000}body.sunlight-mode .tank-lbl{color:#000;text-shadow:none}
+@keyframes shimmer{to{transform:translateX(100%)}}
+
+/* 5: sparkline tooltip */
+.spark{position:relative;user-select:none;-webkit-user-select:none}
+.spark-tip{position:absolute;top:-6px;transform:translate(-50%,-100%);background:var(--text);color:var(--bg);padding:6px 10px;border-radius:10px;
+  font:600 .72rem 'JetBrains Mono',monospace;white-space:nowrap;pointer-events:none;z-index:3;font-variant-numeric:tabular-nums}
+
+/* 6: primary currency swap */
+.swapping .num,.swapping .sub-num{animation:numswap 180ms cubic-bezier(.2,.8,.2,1)}
+@keyframes numswap{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* 7: FX heartbeat radar + fetch shimmer */
+.fx .dot{position:relative}
+.fx .dot::after{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid #22e07a;opacity:0;animation:radar 2s ease-out infinite}
+.fx.off .dot::after{animation:none}
+@keyframes radar{0%{transform:scale(1);opacity:.8}100%{transform:scale(3.2);opacity:0}}
+.fx.loading #fxText{background:linear-gradient(90deg,var(--text) 30%,var(--accent) 50%,var(--text) 70%);background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:txtshimmer 1.1s linear infinite}
+@keyframes txtshimmer{to{background-position:-200% 0}}
+
+/* 8: accordions (grid-template-rows 0fr -> 1fr) */
+.acc-h{width:100%;display:flex;justify-content:space-between;align-items:center;background:none;border:0;color:var(--text);font:700 1.05rem Inter,sans-serif;padding:8px 0;cursor:pointer;text-align:left}
+.acc-h:active{transform:none}
+.chev{width:10px;height:10px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;transform:rotate(45deg);transition:transform .3s cubic-bezier(.4,0,.2,1);margin-right:4px}
+.acc.open>.acc-h .chev{transform:rotate(225deg)}
+.acc-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
+.acc.open>.acc-b{grid-template-rows:1fr}
+.acc-in{overflow:hidden;min-height:0;visibility:hidden;transition:visibility 0s linear .3s}
+.acc.open>.acc-b>.acc-in{visibility:visible;transition-delay:0s}
+.acc.card{padding-top:8px;padding-bottom:8px}.acc.card.open{padding-bottom:16px}
+#octane{border-top:1px solid var(--line);margin:8px 0}
+.acc-in>.row:first-child,.acc-in>ul{margin-top:8px}
+
+/* 9: ripple + checkmark morph */
+.ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.3;transform:scale(0);animation:rip .55s ease-out forwards;pointer-events:none}
+@keyframes rip{to{transform:scale(1);opacity:0}}
+.ic{display:inline-block;font-style:normal;margin-right:4px}
+.chip.ok{border-color:#3ddc97!important}.chip.ok .ic{color:#3ddc97;font-weight:800;animation:pop .45s cubic-bezier(.34,1.56,.64,1)}
+#qbOut.flash{animation:flashbg .8s ease-out}
+@keyframes flashbg{0%{background:rgba(61,220,151,.28)}100%{background:transparent}}
+#qbOut{border-radius:8px;padding:4px 6px;margin-left:-6px}
+
+/* 10: add-on icon bounce */
+.ic.pop{animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.6) translateY(-4px)}100%{transform:scale(1)}}
+
+/* 12: elastic pull-to-refresh */
+.ptr{position:fixed;top:calc(var(--sat) + 4px);left:50%;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+  background:var(--card);color:var(--muted);border:1px solid var(--line);transform:translate(-50%,-60px);z-index:45;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),background-color .15s,color .15s;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.ptr.ready{background:var(--accent);color:var(--accent-text)}
+.ptr.spin svg{animation:spin360 .7s linear infinite}
+.ptr svg{transition:transform .1s linear}
+@keyframes spin360{to{transform:rotate(360deg)}}
+
+/* 13: staggered fade-in */
+.fadein{animation:fadeup .3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* 14: padlock + glow + sync spin */
+.mcard.lockfx{animation:glow 1.1s ease-out}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(16,185,129,.9);border-color:#10b981}100%{box-shadow:0 0 0 14px rgba(16,185,129,0);border-color:var(--edge)}}
+.padlock{display:inline-block}.lockfx .padlock{animation:snap .7s cubic-bezier(.34,1.56,.64,1)}
+@keyframes snap{0%{transform:rotate(-25deg) scale(1.5)}30%{transform:rotate(18deg)}55%{transform:rotate(-10deg)}80%{transform:rotate(5deg)}100%{transform:none}}
+.sync-ic{display:inline-block}.unlock.spinning .sync-ic{animation:spin360 .5s ease-in-out}
+
+/* 15: story preview entrance, sheen, confetti */
+.modal:not([hidden]) .storysheet{animation:scalein .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes scalein{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.sheenwrap{position:relative;overflow:hidden;border-radius:12px;width:fit-content;max-width:100%;margin:0 auto 12px}
+.sheenwrap .storyimg{margin:0}
+.sheenwrap::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-120%);pointer-events:none}
+.sheenwrap.play::after{animation:sheen .9s .15s ease-out forwards}
+@keyframes sheen{to{transform:translateX(120%)}}
+.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.confetti i{position:absolute;top:30%;width:7px;height:7px;border-radius:2px;animation:conf .9s ease-out forwards}
+@keyframes conf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),-90px) rotate(360deg)}}
+
+/* SW update pill */
+.update-pill{position:fixed;left:50%;bottom:calc(var(--sab) + 16px);transform:translate(-50%,140%);z-index:70;max-width:92vw;
+  padding:12px 20px;border-radius:99px;border:1px solid rgba(255,255,255,.18);background:rgba(20,26,40,.72);color:#fff;font:700 .85rem Inter,sans-serif;
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);transition:transform .4s cubic-bezier(.34,1.56,.64,1);cursor:pointer}
+.update-pill.show{transform:translate(-50%,0)}
+body.sunlight-mode .update-pill{background:#000;border-color:#000}
+.lock .pill{white-space:normal}
+
+/* motion off in AMOLED and for reduced-motion: pseudo-elements included */
+body.battery-save *::before,body.battery-save *::after{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*::before,*::after{animation:none!important;transition:none!important}.glide-ind,.tank-fill{transition:none!important}}
+body.battery-save .glide-ind,body.battery-save .tank-fill{transition:none!important}
