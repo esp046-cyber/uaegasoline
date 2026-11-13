@@ -30,7 +30,7 @@
 <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-<div id="ptr" class="ptr" aria-hidden="true">Release to refresh</div>
+<div id="ptr" class="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2.5c3.2 4.3 6 7.4 6 11a6 6 0 0 1-12 0c0-3.6 2.8-6.7 6-11z"/></svg></div>
 <header class="top">
   <div><h1>Dubai Fuel Monitor</h1><p class="sub">UAE vs Philippines · Jebel Ali</p></div>
   <div class="hbtns">
@@ -89,7 +89,7 @@
   <section class="card">
     <h2>Fill-up cost</h2>
     <label class="row" for="vol"><span>Tank volume</span><span class="mono big"><output id="volOut">67</output> L</span></label>
-    <div class="vpresets" id="vpresets" role="group" aria-label="Vehicle presets">
+    <div class="vpresets glide" id="vpresets" role="group" aria-label="Vehicle presets"><span class="glide-ind" aria-hidden="true"></span>
       <button class="vp" data-v="35"><b>Hatchback</b><span>35 L</span></button>
       <button class="vp" data-v="45"><b>Sedan</b><span>45 L</span></button>
       <button class="vp" data-v="55"><b>Crossover</b><span>55 L</span></button>
@@ -97,21 +97,22 @@
       <button class="vp" data-v="100"><b>SUV / Patrol</b><span>100 L</span></button>
     </div>
     <input id="vol" type="range" min="10" max="140" value="67" aria-label="Tank volume in litres">
+    <div class="tank" aria-hidden="true"><div class="tank-fill" id="tankFill"></div><span class="tank-lbl" id="tankLbl"></span></div>
     <div class="row"><label for="gradeSel">Fuel grade</label>
       <select id="gradeSel"><option value="0">Super 98</option><option value="1">Special 95</option><option value="2">E-Plus 91</option><option value="3">Diesel</option></select></div>
     <h3 class="sub2">Pit-stop add-ons</h3>
     <div class="pillrow" id="addons">
-      <button class="chip ad" data-k="coffee" aria-pressed="false">Oasis Coffee +12 AED</button>
-      <button class="chip ad" data-k="manual" aria-pressed="false">Manual Wash +40 AED</button>
-      <button class="chip ad" data-k="auto" aria-pressed="false">Auto Wash +30 AED</button>
+      <button class="chip ad" data-k="coffee" aria-pressed="false"><span class="ic" aria-hidden="true">☕</span> Oasis Coffee +12 AED</button>
+      <button class="chip ad" data-k="manual" aria-pressed="false"><span class="ic" aria-hidden="true">🧽</span> Manual Wash +40 AED</button>
+      <button class="chip ad" data-k="auto" aria-pressed="false"><span class="ic" aria-hidden="true">🚿</span> Auto Wash +30 AED</button>
     </div>
     <div class="stop" id="stopOut"></div>
     <h3 class="sub2">Quick cash fill-up</h3>
     <div class="pillrow" id="qbPills">
-      <button class="chip qb" data-cur="AED" data-amt="50">Fill AED 50</button>
-      <button class="chip qb" data-cur="AED" data-amt="100">Fill AED 100</button>
-      <button class="chip qb" data-cur="PHP" data-amt="1000">Fill ₱1,000</button>
-      <button class="chip qb" data-cur="PHP" data-amt="2000">Fill ₱2,000</button>
+      <button class="chip qb" data-cur="AED" data-amt="50"><i class="ic" aria-hidden="true">⛽</i> Fill AED 50</button>
+      <button class="chip qb" data-cur="AED" data-amt="100"><i class="ic" aria-hidden="true">⛽</i> Fill AED 100</button>
+      <button class="chip qb" data-cur="PHP" data-amt="1000"><i class="ic" aria-hidden="true">⛽</i> Fill ₱1,000</button>
+      <button class="chip qb" data-cur="PHP" data-amt="2000"><i class="ic" aria-hidden="true">⛽</i> Fill ₱2,000</button>
     </div>
     <p class="note" id="qbOut"></p>
     <p class="remit" id="remit"></p>
@@ -120,15 +121,15 @@
 
   <section class="card" id="matrixSec">
     <h2>Fuel matrix: UAE vs Philippines</h2>
+    <p class="note" id="phNote"></p>
     <div class="row"><span class="note">Primary display</span>
       <div class="duo" role="group" aria-label="Primary display currency"><button class="seg on" data-prim="AED">AED</button><button class="seg" data-prim="PHP">PHP</button></div></div>
-    <details class="drawer"><summary>Octane &amp; Engine Guide</summary>
-      <ul>
+    <div class="acc" id="octane"><button class="acc-h" aria-expanded="false" aria-controls="octaneB">Octane &amp; Engine Guide<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="octaneB"><div class="acc-in"><ul>
         <li><b>Super 98</b> (closest PH match: RON 100 / Blaze): high-compression, turbocharged and performance engines, or any car whose manual asks for 98.</li>
         <li><b>Special 95</b> (PH: RON 95 / Premium Unleaded): the standard choice for most sedans, crossovers and SUVs.</li>
         <li><b>E-Plus 91</b> (PH: RON 91 / Regular Unleaded): fleet and commercial vehicles, or cars whose manual explicitly allows 91.</li>
         <li>In UAE desert heat and heavy loads, a grade below your manual's requirement can cause knocking. Always follow the owner's manual.</li>
-      </ul></details>
+      </ul></div></div></div>
     <div class="scroll"><table class="tbl matrix" id="matrix"></table></div>
     <div class="mcards" id="matrixCards"></div>
     <p class="note" id="priceStatus"></p>
@@ -136,14 +137,13 @@
     <div class="row"><button id="syncPrices" class="btn ghost">Sync UAE prices</button><button id="resetPrices" class="btn ghost">Reset to baseline</button></div>
   </section>
 
-  <section class="card">
-    <h2>Monthly fuel budget</h2>
+  <section class="card acc open" id="budgetAcc"><button class="acc-h" aria-expanded="true" aria-controls="budgetB">Monthly fuel budget<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="budgetB"><div class="acc-in">
     <div class="row"><label for="budget">Allowance / cap (AED)</label>
       <input id="budget" type="number" inputmode="decimal" step="any" min="0" value="1000" aria-label="Monthly fuel budget in AED"></div>
     <p class="note" id="budgetOut"></p>
-  </section>
+  </div></div></section>
 
-  <details class="card drawer" id="commute"><summary>Commute &amp; Toll Estimator</summary>
+  <section class="card acc" id="commute"><button class="acc-h" aria-expanded="false" aria-controls="commuteB">Commute &amp; Toll Estimator<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="commuteB"><div class="acc-in">
     <div class="row"><label for="route">Route</label>
       <select id="route"><option value="65">Discovery Gardens → Downtown Dubai (65 km round trip)</option>
         <option value="240">Jebel Ali → Abu Dhabi Corniche (240 km round trip)</option>
@@ -161,7 +161,7 @@
         <button class="chip cp on" data-n="1">Solo</button><button class="chip cp" data-n="2">÷ 2</button><button class="chip cp" data-n="3">÷ 3</button><button class="chip cp" data-n="4">÷ 4</button></div></div>
     <div id="commuteOut" class="stop"></div>
     <p class="note">Salik rates are as entered here; confirm current tariffs with RTA.</p>
-  </details>
+  </div></div></section>
 
   <section class="card">
     <h2>Nearest stations</h2>
@@ -173,7 +173,7 @@
 
   <section class="card">
     <div class="row"><h2>Fuel &amp; energy news</h2><button id="refreshNews" class="btn ghost">Refresh</button></div>
-    <div class="pillrow" id="newsFilters" role="group" aria-label="News category">
+    <div class="pillrow glide" id="newsFilters" role="group" aria-label="News category"><span class="glide-ind" aria-hidden="true"></span>
       <button class="chip nf on" data-cat="all">All Updates</button><button class="chip nf" data-cat="uae">UAE Fuel Committee</button>
       <button class="chip nf" data-cat="traffic">Dubai Traffic &amp; Salik</button><button class="chip nf" data-cat="ph">Philippines DOE</button></div>
     <p class="note" id="newsStatus"></p>
@@ -197,12 +197,13 @@
   </div>
 </div>
 <div id="storyModal" class="modal" hidden role="dialog" aria-modal="true" aria-label="Story card preview">
-  <div class="sheet"><div class="grab" aria-hidden="true"></div>
-    <img id="storyImg" class="storyimg" alt="Story card preview">
-    <div class="row"><button id="storyDl" class="btn" style="flex:1">Download</button><button id="storyShare" class="btn wa" style="flex:1">Share</button></div>
+  <div class="sheet storysheet"><div class="grab" aria-hidden="true"></div>
+    <div class="sheenwrap" id="sheenWrap"><img id="storyImg" class="storyimg" alt="Story card preview"><div id="confetti" class="confetti" aria-hidden="true"></div></div>
+    <div class="row"><button id="storyDl" class="btn" style="flex:1">Download</button><button id="storyShare" class="btn wa" style="flex:1">Share Story Card</button></div>
     <button id="storyClose" class="btn ghost" style="width:100%">Close</button>
   </div>
 </div>
+<button id="updatePill" class="update-pill" hidden></button>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="./js/news-fetcher.js"></script>
 <script src="./js/app.js"></script>
