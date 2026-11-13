@@ -10,9 +10,9 @@
 
   /* November 2026 baseline: UAE = Fuel Price Committee; PH = Metro Manila benchmark averages. */
   const BASELINE = {
-    month: '2026-11', phVer: '2026-11-10',
+    month: '2026-11', phVer: '2026-11-10b',
     uae: [['Super 98', 4.16], ['Special 95', 4.04], ['E-Plus 91', 3.97], ['Diesel', 4.75]],
-    ph:  [['RON 100 / Blaze', 80.90], ['RON 95 / Premium Unleaded', 70.90], ['RON 91 / Regular Unleaded', 72.50], ['Diesel', 90.35]]
+    ph:  [['RON 97/100', 83.90], ['RON 95', 76.50], ['RON 91', 74.70], ['Diesel', 90.35]]
   };
   /* Official UAE Fuel Price Committee prices, AED/L. */
   const HISTORY = { labels: ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'], s98: [3.95, 3.40, 3.60, 3.80, 4.40, 4.16], s95: [3.83, 3.29, 3.49, 3.69, 4.28, 4.04] };
@@ -23,7 +23,7 @@
     saved.ph.forEach((row, i) => { if (!(saved.edited && saved.edited['ph' + i])) row[1] = BASELINE.ph[i][1]; row[0] = BASELINE.ph[i][0]; });
     saved.phVer = BASELINE.phVer; try { localStorage.setItem('dubaifuel.prices.v2', JSON.stringify(saved)); } catch (_) {}
   }
-  const APP_VERSION = 'v1.0.7', PH_NOTE = 'PH: Nov 10, 2026 DOE post-rollback avg';
+  const APP_VERSION = 'v1.0.8', PH_NOTE = 'PH: Nov 10, 2026 DOE post-rollback avg';
   const state = {
     rate: store.get('rate', 15.8), live: false, rateTime: 0,
     dir: store.get('dir', 'AED2PHP'), liters: store.get('liters', 67), grade: store.get('grade', 0),
@@ -31,9 +31,10 @@
     addons: store.get('addons', []), salik: store.get('salik', 4), split: 1, qb: { cur: 'AED', amt: 50 }, cat: 'all',
     news: { items: [], t: 0 }, prices: saved || { ...clone(BASELINE), edited: {}, src: 'official baseline' }
   };
-  state.animating = false; state.lockFx = null;
+  state.animating = false; state.lockFx = null; state.cash = null; state.prev = 67; state.editing = false;
   const persistPrices = () => store.set('prices.v2', state.prices);
   const fmt = (n, d = 2) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const LT = () => Number.isInteger(state.liters) ? String(state.liters) : fmt(state.liters, 1);
   const monthLabel = ym => new Date(ym + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const buzz = () => { try { navigator.vibrate && navigator.vibrate(10); } catch (_) {} };
   const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
@@ -65,7 +66,7 @@
       const m = Math.max(0, Math.floor((Date.now() - state.rateTime) / 60000));
       $('#fxText').textContent = `Live FX: 1 AED = ${fmt(state.rate, 3)} PHP`;
       $('#fxAge').textContent = m < 1 ? 'just now' : `${m}m ago`;
-    } else { $('#fxText').textContent = `Cached FX: 1 AED = ${fmt(state.rate, 3)} PHP`; $('#fxAge').textContent = ''; }
+    } else { $('#fxText').textContent = (navigator.onLine ? 'Cached FX' : 'Offline · Using cached rates') + `: 1 AED = ${fmt(state.rate, 3)} PHP`; $('#fxAge').textContent = ''; }
   }
 
   /* ---------- trackers + tip ---------- */
@@ -77,41 +78,44 @@
     $('#trkPh').innerHTML = `<b>🇵🇭 PH</b> Weekly pump adjustment every Tuesday · ${toTue === 0 ? 'applies today' : `next in ${toTue} day${toTue === 1 ? '' : 's'}`}`;
   }
   function renderTip() {
-    if (store.get('tipHide', false)) return;
     const b = store.get('budget', 1000), save = b * 0.05;
     $('#tipText').textContent = `Rough guides: heavy A/C use in summer heat can cut fuel economy by around 10–25% on short trips, idling with the A/C running gets 0 km per litre, and tyres about 10 psi under-pressure can add roughly 2% to fuel use. Example: a 5% saving on a ${fmt(b, 0)} AED monthly fuel budget is about ${fmt(save, 0)} AED (≈ ₱${fmt(save * state.rate, 0)}) a month. Check tyre pressure when cold, park in shade, vent hot air before turning on the A/C, and avoid long idling.`;
-    $('#tipBanner').hidden = false;
   }
-  $('#tipClose').onclick = () => { store.set('tipHide', true); $('#tipBanner').hidden = true; };
 
   /* ---------- matrix (table + cards) ---------- */
   function renderMatrix() {
-    const L = state.liters, r = state.rate, { uae, ph, edited } = state.prices, P = state.primary;
-    let h = `<tr><th>Grade (UAE / PH)</th><th>UAE AED/L</th><th>UAE PHP/L</th><th>PH PHP/L</th><th>UAE ${L}L</th><th>PH ${L}L</th><th>UAE vs PH</th></tr>`;
-    const uaeMoney = (aed, tank) => P === 'AED' ? [fmt(aed) + ' AED', fmt(aed * r, tank ? 0 : 2) + ' PHP'] : [fmt(aed * r, tank ? 0 : 2) + ' PHP', fmt(aed) + ' AED'];
-    const phMoney = (php, tank) => P === 'PHP' ? [fmt(php, tank ? 0 : 2) + ' PHP', fmt(php / r) + ' AED'] : [fmt(php / r) + ' AED', fmt(php, tank ? 0 : 2) + ' PHP'];
-    const lock = (c, i, label) => edited[c + i] ? `<div class="lock"><span class="pill warn"><span class="padlock" aria-hidden="true">🔒</span> Custom Price Locked</span><button class="btn ghost unlock" data-c="${c}" data-i="${i}" aria-label="Unlock ${label} price and sync"><span class="sync-ic" aria-hidden="true">⟳</span> Unlock / Sync</button></div>` : '';
-    let cards = '';
+    if (state.editing) return;
+    const r = state.rate, { uae, ph, edited } = state.prices, P = state.primary;
+    const lockBtn = (c, i, label) => `<button class="unlock mini" data-c="${c}" data-i="${i}" aria-label="Custom Price Locked: unlock ${label} and sync"><span class="padlock" aria-hidden="true">🔒</span><span class="sync-ic" aria-hidden="true">⟳</span></button>`;
+    const cell = (c, i, main, mainUnit, sub, label) => `<td class="pc${state.lockFx && state.lockFx.c === c && state.lockFx.i === i ? ' lockfx' : ''}" data-c="${c}" data-i="${i}">
+      <button class="pcell" aria-label="Edit ${label} price per litre"><span class="num">${main}</span> <small>${mainUnit}</small> <span class="pen" aria-hidden="true">✎</span></button>
+      <div class="sub-num">≈ ${sub}</div>${edited[c + i] ? lockBtn(c, i, label) : ''}</td>`;
+    let h = '<thead><tr><th>Grade</th><th>🇦🇪 UAE</th><th>🇵🇭 PH</th><th>Gap</th></tr></thead><tbody>';
     uae.forEach(([name, price], i) => {
-      const phName = ph[i][0], phPrice = ph[i][1], uaePhp = price * r, diff = (uaePhp - phPrice) / phPrice * 100, cls = diff <= 0 ? 'good' : 'bad';
-      h += `<tr><td>${name}<br><small class="note">${phName}</small></td>
-        <td class="mono price" data-c="uae" data-i="${i}">${fmt(price)}${edited['uae' + i] ? '*' : ''}</td><td class="mono">${fmt(uaePhp)}</td>
-        <td class="mono price" data-c="ph" data-i="${i}">${fmt(phPrice)}${edited['ph' + i] ? '*' : ''}</td>
-        <td class="mono">${fmt(price * L)} AED<br><small class="note">${fmt(price * L * r, 0)} PHP</small></td>
-        <td class="mono">${fmt(phPrice * L, 0)} PHP<br><small class="note">${fmt(phPrice * L / r)} AED</small></td>
-        <td><span class="pill ${cls}">${diff > 0 ? '+' : ''}${fmt(diff, 1)}%</span></td></tr>`;
-      const [ul, ul2] = uaeMoney(price), [ut, ut2] = uaeMoney(price * L, true), [pl, pl2] = phMoney(phPrice), [pt, pt2] = phMoney(phPrice * L, true);
-      cards += `<article class="mcard${i === state.grade ? ' sel' : ''}${state.lockFx && state.lockFx.i === i ? ' lockfx' : ''}"><header><h3>${name} <span>vs ${phName}</span></h3><span class="pill ${cls}">${diff > 0 ? '+' : ''}${fmt(diff, 1)}%</span></header>
-        <div class="cols"><div><h4>🇦🇪 UAE</h4><p class="lbl">Per litre</p><p class="num">${ul}</p><p class="sub-num">≈ ${ul2}</p><p class="lbl">${L} L tank</p><p class="num">${ut}</p><p class="sub-num">≈ ${ut2}</p>${lock('uae', i, name + ' UAE')}</div>
-        <div><h4>🇵🇭 Philippines</h4><p class="lbl">Per litre</p><p class="num">${pl}</p><p class="sub-num">≈ ${pl2}</p><p class="lbl">${L} L tank</p><p class="num">${pt}</p><p class="sub-num">≈ ${pt2}</p>${lock('ph', i, phName + ' Philippines')}</div></div>
-        <footer><button class="btn ghost price" data-c="uae" data-i="${i}">Edit AED/L</button><button class="btn ghost price" data-c="ph" data-i="${i}">Edit PHP/L</button></footer></article>`;
+      const phName = ph[i][0], phPrice = ph[i][1], uaePhp = price * r, diff = (uaePhp - phPrice) / phPrice * 100;
+      const u = P === 'AED' ? [fmt(price), 'AED', fmt(uaePhp) + ' PHP'] : [fmt(uaePhp), 'PHP', fmt(price) + ' AED'];
+      const p = P === 'PHP' ? [fmt(phPrice), 'PHP', fmt(phPrice / r) + ' AED'] : [fmt(phPrice / r), 'AED', fmt(phPrice) + ' PHP'];
+      h += `<tr class="${i === state.grade ? 'sel' : ''}"><th scope="row">${name}<small>vs ${phName}</small></th>${cell('uae', i, ...u.slice(0, 2), u[2], name + ' UAE')}${cell('ph', i, ...p.slice(0, 2), p[2], phName + ' Philippines')}
+        <td><span class="pill ${diff <= 0 ? 'good' : 'bad'}">${diff > 0 ? '+' : ''}${fmt(diff, 1)}%</span></td></tr>`;
     });
-    $('#matrix').innerHTML = h; $('#matrixCards').innerHTML = cards;
+    $('#matrix').innerHTML = h + '</tbody>';
     $('#phNote').textContent = PH_NOTE + (Date.now() > Date.parse('2026-11-17T00:00:00+08:00') ? ' · DOE adjusts weekly, so this may have changed' : '');
     const stale = state.prices.month !== new Date().toISOString().slice(0, 7), el = $('#priceStatus');
-    el.textContent = `UAE prices: ${monthLabel(state.prices.month)} (${state.prices.src}).` + (stale ? ' A newer monthly announcement may be out: tap Sync UAE prices.' : '') + ' * = your edit.';
+    el.textContent = `UAE prices: ${monthLabel(state.prices.month)} (${state.prices.src}). Tap any price to edit; 🔒 marks your own price.` + (stale ? ' A newer monthly announcement may be out: tap Sync UAE prices.' : '');
     el.style.color = stale ? 'var(--accent)' : '';
-    $('#matrixNote').textContent = 'A negative % means UAE fuel is cheaper than the Philippines after conversion.';
+    $('#matrixNote').textContent = 'Gap: negative means UAE fuel is cheaper than the Philippines after conversion.';
+  }
+  function startEdit(btn) {
+    const td = btn.closest('td'), { c, i } = td.dataset, cur = state.prices[c][i][1]; state.editing = true;
+    td.innerHTML = `<input class="pedit" type="number" inputmode="decimal" step="any" min="0" value="${cur}" aria-label="New ${c === 'uae' ? 'AED' : 'PHP'} per litre price for ${state.prices[c][i][0]}"><div class="sub-num">${c === 'uae' ? 'AED' : 'PHP'}/L · Enter to save</div>`;
+    const inp = td.querySelector('input'); inp.focus(); inp.select(); let done = false;
+    const finish = save => {
+      if (done) return; done = true; const v = parseFloat(inp.value); state.editing = false;
+      if (save && v > 0 && v !== cur) { state.prices[c][i][1] = v; state.prices.edited[c + i] = true; state.lockFx = { c, i: +i }; persistPrices(); refresh(); setTimeout(() => { state.lockFx = null; }, 1200); }
+      else renderMatrix();
+    };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
   }
   document.addEventListener('click', e => {
     const u = e.target.closest('.unlock');
@@ -123,19 +127,19 @@
       }, motionOK() ? 480 : 0);
       return;
     }
-    const td = e.target.closest('.price'); if (!td) return;
-    const { c, i } = td.dataset, cur = state.prices[c][i][1];
-    const v = parseFloat(prompt(`New ${c === 'uae' ? 'AED' : 'PHP'}/L price for ${state.prices[c][i][0]}:`, cur));
-    if (v > 0) { state.prices[c][i][1] = v; state.prices.edited[c + i] = true; state.lockFx = { c, i: +i }; persistPrices(); refresh(); setTimeout(() => { state.lockFx = null; }, 1200); }
+    const pc = e.target.closest('.pcell'); if (pc) startEdit(pc);
   });
   $('#resetPrices').onclick = () => { state.prices = { ...clone(BASELINE), edited: {}, src: 'official baseline' }; persistPrices(); refresh(); toast('Baseline restored'); };
-  $$('[data-prim]').forEach(b => b.onclick = () => { buzz(); state.primary = b.dataset.prim; store.set('primary', state.primary); $$('[data-prim]').forEach(x => x.classList.toggle('on', x === b)); renderMatrix(); const mc = $('#matrixCards'); mc.classList.remove('swapping'); void mc.offsetWidth; mc.classList.add('swapping'); setTimeout(() => mc.classList.remove('swapping'), 220); });
+  $$('[data-prim]').forEach(b => b.onclick = () => { buzz(); state.primary = b.dataset.prim; store.set('primary', state.primary); $$('[data-prim]').forEach(x => x.classList.toggle('on', x === b)); renderMatrix(); const mc = $('#matrix'); mc.classList.remove('swapping'); void mc.offsetWidth; mc.classList.add('swapping'); setTimeout(() => mc.classList.remove('swapping'), 220); });
 
   /* ---------- rewards, sparkline ---------- */
   function renderRewards() {
     const a = active(), net = a.price * (1 - state.cb / 100);
-    $('#ptsL').textContent = state.liters; $('#pts').textContent = fmt(Math.round(state.liters * 1743 / 67), 0);
+    $('#rwLbl').textContent = `ADNOC Rewards · ${LT()} L of ${a.name}`; $('#pts').textContent = fmt(Math.round(state.liters * 1743 / 67), 0);
     $('#netAed').textContent = `${fmt(net)} AED/L`; $('#netPhp').textContent = `≈ ${fmt(net * state.rate)} PHP/L (${a.name}, ${state.cb}% rebate)`;
+  }
+  function renderStrip() {
+    $('#strip').innerHTML = state.prices.uae.map(([n, p], i) => `<button class="gt${i === state.grade ? ' on' : ''}" data-g="${i}" aria-pressed="${i === state.grade}"><span class="gn">${n}</span><b class="mono">${fmt(p)}</b><small>AED/L · ≈ ₱${fmt(p * state.rate)}</small></button>`).join('');
   }
   function renderSpark() {
     const W = 320, H = 96, p = 10, all = [...HISTORY.s98, ...HISTORY.s95], lo = Math.min(...all) - .05, hi = Math.max(...all) + .05;
@@ -152,7 +156,7 @@
     const a = active(), fuel = a.price * state.liters, items = state.addons.filter(k => ADDONS[k]);
     const extra = items.reduce((s, k) => s + ADDONS[k][1], 0), tot = fuel + extra;
     const R = (k, v, d) => `<span data-roll="${k}" data-to="${v}" data-d="${d}"></span>`;
-    $('#stopOut').innerHTML = `<div class="ln"><span>${a.name} · ${state.liters} L</span><b class="mono">${R('fuel', fuel, 2)} AED</b></div>` +
+    $('#stopOut').innerHTML = `<div class="ln"><span>${a.name} · ${LT()} L</span><b class="mono">${R('fuel', fuel, 2)} AED</b></div>` +
       items.map(k => `<div class="ln"><span>${ADDONS[k][0]}</span><b class="mono">${fmt(ADDONS[k][1])} AED</b></div>`).join('') +
       `<div class="ln tot"><span>Station visit total</span><b class="mono">${R('totA', tot, 2)} AED ≈ ${R('totP', tot * state.rate, 0)} PHP</b></div>`;
     rollNums('#stopOut', state.animating);
@@ -160,17 +164,19 @@
   }
   $$('.ad').forEach(b => b.onclick = () => { buzz(); const k = b.dataset.k; state.addons = state.addons.includes(k) ? state.addons.filter(x => x !== k) : [...state.addons, k]; store.set('addons', state.addons); const ic = b.querySelector('.ic'); if (ic) { ic.classList.remove('pop'); void ic.offsetWidth; ic.classList.add('pop'); } renderStop(); });
   function renderQuick() {
-    const r = state.rate, { cur, amt } = state.qb, aed = cur === 'AED' ? amt : amt / r, u = state.prices.uae;
-    $$('.qb').forEach(b => b.classList.toggle('on', b.dataset.cur === cur && +b.dataset.amt === amt));
-    const Rq = (k, v) => `<span data-roll="${k}" data-to="${v}" data-d="2"></span>`;
-    $('#qbOut').innerHTML = `${cur === 'AED' ? 'AED ' + fmt(amt, 0) : '₱' + fmt(amt, 0) + ' (≈ AED ' + fmt(aed) + ')'} buys ${Rq('qb98', aed / u[0][1])} L of Super 98 or ${Rq('qb95', aed / u[1][1])} L of Special 95.`;
+    const r = state.rate, { cur, amt } = state.qb, aed = cur === 'AED' ? amt : amt / r, u = state.prices.uae, a = active();
+    $$('.qb').forEach(b => b.classList.toggle('on', !!state.cash && b.dataset.cur === cur && +b.dataset.amt === amt));
+    $('#cashReset').hidden = !state.cash;
+    const label = cur === 'AED' ? 'AED ' + fmt(amt, 0) : '₱' + fmt(amt, 0) + ' (≈ AED ' + fmt(aed) + ')', Rq = (k, v) => `<span data-roll="${k}" data-to="${v}" data-d="2"></span>`;
+    $('#qbOut').innerHTML = state.cash ? `${label} fills ${Rq('qbL', aed / a.price)} L of ${a.name}. The tank and totals above now match this amount.`
+      : `${label} buys ${Rq('qb98', aed / u[0][1])} L of Super 98 or ${Rq('qb95', aed / u[1][1])} L of Special 95.`;
     rollNums('#qbOut', false);
-    const a = active(), tank = a.price * state.liters;
-    $('#remit').innerHTML = `Remittance value: one full ${state.liters} L tank of ${a.name} (<span data-roll="rmA" data-to="${tank}" data-d="2"></span> AED) equals about ₱<span data-roll="rmP" data-to="${tank * r}" data-d="0"></span> at today’s rate.`;
+    const tank = a.price * state.liters;
+    $('#remit').innerHTML = `Remittance value: ${LT()} L of ${a.name} (<span data-roll="rmA" data-to="${tank}" data-d="2"></span> AED) equals about ₱<span data-roll="rmP" data-to="${tank * r}" data-d="0"></span> at today’s rate.`;
     rollNums('#remit', state.animating);
   }
   $$('.qb').forEach(b => b.onclick = e => {
-    buzz(); state.qb = { cur: b.dataset.cur, amt: +b.dataset.amt }; renderQuick();
+    buzz(); animId++; state.animating = false; state.qb = { cur: b.dataset.cur, amt: +b.dataset.amt }; if (!state.cash) state.prev = state.liters; state.cash = { cur: state.qb.cur, amt: state.qb.amt }; refresh();
     const ic = b.querySelector('.ic'); ripple(b, e); b.classList.add('ok'); if (ic) ic.textContent = '✓';
     $('#qbOut').classList.add('flash');
     setTimeout(() => { b.classList.remove('ok'); if (ic) ic.textContent = '⛽'; $('#qbOut').classList.remove('flash'); }, 800);
@@ -180,7 +186,7 @@
     const b = num($('#budget')), a = active(), tank = a.price * state.liters, r = state.rate;
     if (!tank || !b) { $('#budgetOut').textContent = 'Enter a monthly allowance in AED to see how many full tanks it covers.'; return; }
     const tanks = Math.floor(b / tank), left = b - tanks * tank;
-    $('#budgetOut').textContent = `${fmt(b, 0)} AED covers ${tanks} full ${state.liters} L tank${tanks === 1 ? '' : 's'} of ${a.name} at ${fmt(tank)} AED each (one fill-up uses ${fmt(tank / b * 100, 1)}% of the budget). Left over after full tanks: ${fmt(left)} AED ≈ ₱${fmt(left * r, 0)}.`;
+    $('#budgetOut').textContent = `${fmt(b, 0)} AED covers ${tanks} full ${LT()} L tank${tanks === 1 ? '' : 's'} of ${a.name} at ${fmt(tank)} AED each (one fill-up uses ${fmt(tank / b * 100, 1)}% of the budget). Left over after full tanks: ${fmt(left)} AED ≈ ₱${fmt(left * r, 0)}.`;
   }
 
   /* ---------- commute ---------- */
@@ -201,11 +207,15 @@
 
   /* ---------- stations ---------- */
   function renderStations() {
-    const link = (q) => { const e = encodeURIComponent(q); return `<a class="chip" target="_blank" rel="noopener" href="https://maps.apple.com/?q=${e}">Apple Maps</a><a class="chip" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${e}">Google Maps</a><a class="chip" target="_blank" rel="noopener" href="https://waze.com/ul?q=${e}&navigate=yes">Waze</a>`; };
-    const area = $('#area').value;
-    $('#stationsOut').innerHTML = `<div class="stn"><b>Fuel stations near ${area}</b><div class="pillrow">${link('fuel station near ' + area + ' Dubai')}</div></div>` +
-      [['ADNOC Service Station, Discovery Gardens', 'ADNOC Service Station Discovery Gardens Dubai'], ['ENOC, Jebel Ali Industrial', 'ENOC petrol station Jebel Ali Industrial Dubai'], ['Emarat, E11', 'Emarat petrol station E11 Sheikh Zayed Road Dubai']]
-        .map(([t, q]) => `<div class="stn"><b>${t}</b><div class="pillrow">${link(q)}</div></div>`).join('');
+    const row = (title, q) => {
+      const e = encodeURIComponent(q);
+      return `<div class="stn"><span class="stn-n">${title}</span><span class="stn-l">
+        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Apple Maps" href="https://maps.apple.com/?q=${e}">Apple</a>
+        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Google Maps" href="https://www.google.com/maps/search/?api=1&query=${e}">Google</a>
+        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Waze" href="https://waze.com/ul?q=${e}&navigate=yes">Waze</a></span></div>`;
+    }, area = $('#area').value;
+    $('#stationsOut').innerHTML = row(`Fuel near ${area}`, 'fuel station near ' + area + ' Dubai') + row('ADNOC, Discovery Gardens', 'ADNOC Service Station Discovery Gardens Dubai') +
+      row('ENOC, Jebel Ali Industrial', 'ENOC petrol station Jebel Ali Industrial Dubai') + row('Emarat, E11', 'Emarat petrol station E11 Sheikh Zayed Road Dubai');
   }
   $('#area').addEventListener('input', renderStations);
 
@@ -226,23 +236,29 @@
 
   /* ---------- news ---------- */
   function renderNews() {
-    const res = state.news, ul = $('#news'), c = state.cat; ul.innerHTML = '';
+    const res = state.news, ul = $('#news'), c = state.cat; ul.classList.remove('fading'); $('#fallbackCards').classList.remove('fading'); ul.innerHTML = '';
     const items = res.items.filter(n => c === 'all' || n.cat === c);
     items.forEach((n, ix) => {
       const li = document.createElement('li'); li.className = 'fadein'; li.style.animationDelay = (ix * 40) + 'ms';
-      const a = document.createElement('a'); a.href = n.link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = n.title;
+      const box = document.createElement('div'); box.className = 'nt';
+      const a = document.createElement('a'); a.href = n.link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = n.title + ' ';
+      const ext = document.createElement('span'); ext.className = 'ext'; ext.setAttribute('aria-hidden', 'true'); ext.textContent = '↗'; a.append(ext);
       const s = document.createElement('small'); s.textContent = n.source + (n.date ? ' · ' + new Date(n.date).toLocaleDateString() : '');
-      const b = document.createElement('button'); b.className = 'btn ghost sh'; b.textContent = 'Share'; b.onclick = () => share(n.title, n.link);
-      li.append(a, s, b); ul.append(li);
+      const b = document.createElement('button'); b.className = 'ic-btn'; b.textContent = '⤴'; b.setAttribute('aria-label', 'Share headline: ' + n.title); b.onclick = () => share(n.title, n.link);
+      box.append(a, s); li.append(box, b); ul.append(li);
     });
     $('#newsStatus').textContent = res.fallback ? 'Live feeds unavailable right now. Showing official source links.'
       : !items.length ? 'No headlines in this category yet. See the official sources below.'
       : `Updated ${new Date(res.t).toLocaleTimeString()}${res.offline ? ' (saved copy, offline)' : ''}`;
-    $('#fallbackCards').innerHTML = NewsFetcher.FALLBACK_CARDS.filter(f => c === 'all' || f.cat === c).map((f, ix) => `<a class="fadein" style="animation-delay:${ix * 40}ms" href="${f.url}" target="_blank" rel="noopener">${f.title}<small>${f.note}</small></a>`).join('');
+    $('#fallbackCards').innerHTML = NewsFetcher.FALLBACK_CARDS.filter(f => c === 'all' || f.cat === c).map((f, ix) => `<a class="fadein" style="animation-delay:${ix * 40}ms" href="${f.url}" target="_blank" rel="noopener">${f.title} <span class="ext" aria-hidden="true">↗</span><small>${f.note}</small></a>`).join('');
     $$('.nf').forEach(b => b.classList.toggle('on', b.dataset.cat === c)); glide($('#newsFilters'));
   }
   async function loadNews(force) { $('#newsStatus').textContent = 'Loading…'; state.news = await NewsFetcher.load(force); renderNews(); }
-  $$('.nf').forEach(b => b.onclick = () => { state.cat = b.dataset.cat; renderNews(); });
+  $$('.nf').forEach(b => b.onclick = () => {
+    state.cat = b.dataset.cat; $$('.nf').forEach(x => x.classList.toggle('on', x === b)); glide($('#newsFilters'));
+    if (!motionOK()) return renderNews();
+    $('#news').classList.add('fading'); $('#fallbackCards').classList.add('fading'); setTimeout(renderNews, 120);   // fade out, then staggered fade in
+  });
   $('#refreshNews').onclick = () => loadNews(true);
 
   /* ---------- sharing ---------- */
@@ -252,10 +268,10 @@
       await navigator.clipboard.writeText(`${text}\n${url}`); toast('Copied to clipboard');
     } catch (e) { if (e.name !== 'AbortError') toast('Could not share'); }
   }
-  $('#shareBtn').onclick = () => { const a = active(); share(`Dubai fuel (${monthLabel(state.prices.month)}): ${a.name} ${fmt(a.price)} AED/L ≈ ${fmt(a.price * state.rate)} PHP/L. ${state.liters}L = ${fmt(a.price * state.liters)} AED ≈ ${fmt(a.price * state.liters * state.rate, 0)} PHP. 1 AED = ${fmt(state.rate, 3)} PHP.`); };
+  $('#shareBtn').onclick = () => { const a = active(); share(`Dubai fuel (${monthLabel(state.prices.month)}): ${a.name} ${fmt(a.price)} AED/L ≈ ${fmt(a.price * state.rate)} PHP/L. ${LT()}L = ${fmt(a.price * state.liters)} AED ≈ ${fmt(a.price * state.liters * state.rate, 0)} PHP. 1 AED = ${fmt(state.rate, 3)} PHP.`); };
   $('#waBtn').onclick = () => {
     const a = active(), r = state.rate, L = state.liters;
-    const t = `⛽ Dubai Fuel Update (${monthLabel(state.prices.month)}): ${a.name}: ${fmt(a.price)} AED/L (₱${fmt(a.price * r)}/L) | PH ${a.phName}: ₱${fmt(a.phPrice)}/L.\n${L}L fill-up: ${fmt(a.price * L)} AED (~₱${fmt(a.price * L * r, 0)}).\nCompare here: ${APP_URL}`;
+    const t = `⛽ Dubai Fuel Update (${monthLabel(state.prices.month)}): ${a.name}: ${fmt(a.price)} AED/L (₱${fmt(a.price * r)}/L) | PH ${a.phName}: ₱${fmt(a.phPrice)}/L.\n${LT()}L fill-up: ${fmt(a.price * L)} AED (~₱${fmt(a.price * L * r, 0)}).\nCompare here: ${APP_URL}`;
     window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener');
   };
 
@@ -320,15 +336,19 @@
   const sheet = open => { $('#iosModal').hidden = !open; };
   $('#helpBtn').onclick = () => sheet(true);
   $('#iosGot').onclick = () => sheet(false);
-  $('#iosHide').onclick = () => { store.set('iosHide', true); sheet(false); toast('You can reopen this from the ? button'); };
+  $('#iosHide').onclick = () => { store.set('iosHide', true); store.set('iosBannerHide', true); $('#iosBanner').hidden = true; sheet(false); toast('You can reopen this from the ? button'); };
   $('#iosModal').addEventListener('click', e => { if (e.target.id === 'iosModal') sheet(false); });
   $('#storyModal').addEventListener('click', e => { if (e.target.id === 'storyModal') $('#storyModal').hidden = true; });
   addEventListener('keydown', e => { if (e.key === 'Escape') { sheet(false); $('#storyModal').hidden = true; } });
-  if (isIOS && !standalone && !store.get('iosHide', false) && !store.get('iosShown', false)) { store.set('iosShown', true); setTimeout(() => sheet(true), 1500); }
+  const iosSafari = isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios|opios/i.test(navigator.userAgent);
+  if (iosSafari && !standalone && !store.get('iosBannerHide', false)) $('#iosBanner').hidden = false;
+  $('#iosBannerHow').onclick = () => sheet(true);
+  $('#iosBannerClose').onclick = () => { $('#iosBanner').hidden = true; store.set('iosBannerHide', true); };
 
   /* ---------- slider, presets ---------- */
   let animId = 0;
   function applyLiters(v) {
+    state.cash = null;
     state.liters = v; $('#vol').value = v; $('#volOut').textContent = v; store.set('liters', v);
     $$('.vp').forEach(b => b.classList.toggle('on', +b.dataset.v === v)); refresh(); glide($('#vpresets'));
   }
@@ -346,8 +366,8 @@
   }
   $('#vol').oninput = e => { animId++; state.animating = false; applyLiters(+e.target.value); };
   $$('.vp').forEach(b => b.onclick = () => { buzz(); animateTo(+b.dataset.v); });
-  $('#gradeSel').value = state.grade;
-  $('#gradeSel').onchange = e => { state.grade = +e.target.value; store.set('grade', state.grade); refresh(); };
+  $('#strip').addEventListener('click', e => { const t = e.target.closest('.gt'); if (!t) return; buzz(); state.grade = +t.dataset.g; store.set('grade', state.grade); refresh(); });
+  $('#cashReset').onclick = () => { buzz(); state.cash = null; animateTo(Math.round(state.prev) || 67); };
   $('#cbSel').value = state.cb; $('#cbSel').onchange = e => { state.cb = +e.target.value; store.set('cb', state.cb); renderRewards(); };
 
   /* ---------- inputs ---------- */
@@ -395,7 +415,7 @@
     });
   }
   function glide(box) {                                  // spring-sliding active indicator behind pills
-    const ind = box && box.querySelector('.glide-ind'), on = box && box.querySelector('.on'); if (!ind || !on) return;
+    const ind = box && box.querySelector('.glide-ind'), on = box && box.querySelector('.on'); if (!ind) return; if (!on) { ind.style.opacity = 0; return; } ind.style.opacity = 1;
     const first = !ind.dataset.ready; if (first) ind.style.transition = 'none';
     ind.style.width = on.offsetWidth + 'px'; ind.style.height = on.offsetHeight + 'px'; ind.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop}px)`;
     if (first) requestAnimationFrame(() => { ind.style.transition = ''; ind.dataset.ready = 1; });
@@ -404,7 +424,7 @@
   const TANK_COL = ['#f5b83d', '#22d3ee', '#10b981', '#94a3b8'];   // Super 98 gold, Special 95 cyan, E-Plus 91 emerald, Diesel slate
   function renderTank() {
     const f = $('#tankFill'); f.style.transform = `scaleX(${state.liters / 140})`; f.style.setProperty('--fill', TANK_COL[state.grade]);
-    $('#tankLbl').textContent = `${state.liters} L · ${active().name}`;
+    $('#tankLbl').textContent = `${LT()} L · ${active().name}`;
   }
   function ripple(btn, e) {
     if (!motionOK()) return; const r = btn.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, s = document.createElement('span');
@@ -442,16 +462,6 @@
   function initAcc() {                                   // grid-template-rows 0fr -> 1fr accordions
     $$('.acc-h').forEach(h => h.onclick = () => { const open = h.closest('.acc').classList.toggle('open'); h.setAttribute('aria-expanded', open); buzz(); });
   }
-  function initTipSwipe() {
-    const el = $('#tipBanner'); let x0 = null, dx = 0; el.style.touchAction = 'pan-y';
-    el.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; dx = 0; el.style.transition = 'none'; }, { passive: true });
-    el.addEventListener('touchmove', e => { if (x0 === null) return; dx = e.touches[0].clientX - x0; el.style.transform = `translateX(${dx}px)`; el.style.opacity = String(1 - Math.min(1, Math.abs(dx) / 260)); }, { passive: true });
-    el.addEventListener('touchend', () => {
-      if (x0 === null) return; x0 = null; el.style.transition = 'transform .25s cubic-bezier(.34,1.56,.64,1), opacity .25s';
-      if (Math.abs(dx) > 90) { el.style.transform = `translateX(${dx > 0 ? '110%' : '-110%'})`; el.style.opacity = '0'; setTimeout(() => { store.set('tipHide', true); el.hidden = true; }, 250); }
-      else { el.style.transform = ''; el.style.opacity = ''; }
-    });
-  }
   function initUpdateToast() {                           // slide-up pill when a new service worker takes over
     const pill = $('#updatePill'), had = !!(navigator.serviceWorker && navigator.serviceWorker.controller); let reg = null;
     pill.textContent = `App updated to ${APP_VERSION} — Tap to reload`;
@@ -467,12 +477,18 @@
   }
 
   /* ---------- render everything ---------- */
-  function refresh() { renderConverter(); renderMatrix(); renderRewards(); renderStop(); renderQuick(); renderBudget(); renderCommute(); renderTank(); scheduleStory(); }
+  function refresh() {
+    if (state.cash) {                                    // cash mode: the cash amount sets the litres
+      const aed = state.cash.cur === 'AED' ? state.cash.amt : state.cash.amt / state.rate;
+      state.liters = Math.round(aed / active().price * 100) / 100; $('#vol').value = Math.min(140, Math.max(10, Math.round(state.liters))); $('#volOut').textContent = LT();
+    }
+    $$('.vp').forEach(b => b.classList.toggle('on', !state.cash && +b.dataset.v === state.liters)); glide($('#vpresets'));
+    renderStrip(); renderConverter(); renderMatrix(); renderRewards(); renderStop(); renderQuick(); renderBudget(); renderCommute(); renderTank(); scheduleStory(); }
 
   applyMode(state.mode);
   $$('[data-prim]').forEach(b => b.classList.toggle('on', b.dataset.prim === state.primary));
   applyLiters(state.liters); renderSpark(); renderTrackers(); renderTip(); renderStations(); loadNews(false);
-  initSparkScrub(); initAcc(); initTipSwipe(); initUpdateToast();
+  initSparkScrub(); initAcc(); initUpdateToast();
   addEventListener('resize', () => { glide($('#vpresets')); glide($('#newsFilters')); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { glide($('#vpresets')); glide($('#newsFilters')); });
   syncFx(); syncUae(false);

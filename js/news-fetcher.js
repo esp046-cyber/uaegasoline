@@ -16,7 +16,14 @@
     { title: 'DOE Philippines', note: 'Oil price monitor', cat: 'ph', url: 'https://doe.gov.ph/' }
   ];
   const FALLBACK_ITEMS = () => FALLBACK_CARDS.map(c => ({ source: c.title, title: `${c.title}: ${c.note}`, link: c.url, date: '', cat: c.cat }));
-  const KEY = 'dubaifuel.news.v3';
+  const KEY = 'dubaifuel.news.v4';
+  const DENY = /california|calif\.|texas|florida|new york|chicago|los angeles|midwest|\baaa\b|u\.s\. gas|\bus gas|national average/i;
+  const ALLOW = {
+    uae: /uae|dubai|abu dhabi|emirates|adnoc|enoc|emarat|salik|\brta\b|fuel price committee|gulf|opec|brent|crude|oil price|petrol|diesel|gasoline/i,
+    traffic: /salik|\brta\b|dubai|toll|traffic|abu dhabi|sharjah|uae/i,
+    ph: /\bdoe\b|philippin|manila|luzon|pump|rollback|price hike|petron|caltex|shell|diesel|gasoline|oil/i
+  };
+  const relevant = i => i.title && !DENY.test(i.title) && (ALLOW[i.cat] || ALLOW.uae).test(i.title);
   /* Endpoints tried in order; each returns {items} so one blocked service never breaks the feed. */
   const ENDPOINTS = [
     async u => { const d = await (await fetchT('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u))).json();
@@ -51,16 +58,16 @@
 
   async function load(force = false) {
     let cached = null; try { cached = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) {}
-    if (!force && cached && Date.now() - cached.t < 15 * 60 * 1000) return { items: cached.items, t: cached.t };
+    if (!force && cached && Date.now() - cached.t < 15 * 60 * 1000) return { items: cached.items.filter(relevant), t: cached.t };
     const lists = await Promise.all(FEEDS.map(async f => (await withDeadline(fetchFeed(f.url), 6000, [])).slice(0, 8).map(i => ({ source: f.name, title: strip(i.title), link: i.link, date: i.date, cat: f.cat }))));
-    const all = lists.flat().filter(x => x.title);
+    const all = lists.flat().filter(relevant);
     if (all.length) {
       all.sort((a, b) => new Date(b.date) - new Date(a.date));
       const out = { items: all.slice(0, 30), t: Date.now() };
       try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (_) {}
       return out;
     }
-    if (cached && cached.items.length) return { items: cached.items, t: cached.t, offline: true };
+    if (cached && cached.items.filter(relevant).length) return { items: cached.items.filter(relevant), t: cached.t, offline: true };
     return { items: FALLBACK_ITEMS(), t: Date.now(), offline: true, fallback: true };   // structured fallback, never empty
   }
 
@@ -96,5 +103,5 @@
     return ok ? { month: `${yr}-${String(date.getMonth() + 1).padStart(2, '0')}`, prices: [found.s98, found.s95, found.e91, found.diesel] } : null;
   }
 
-  window.NewsFetcher = { load, getRate, syncUaePrices, FALLBACK_CARDS };
+  window.NewsFetcher = { load, getRate, syncUaePrices, FALLBACK_CARDS, relevant };
 })();
