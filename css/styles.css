@@ -101,10 +101,7 @@ html,body{overflow-x:hidden}
 body.sunlight-mode .mcard{border:2px solid #000;box-shadow:none}
 body.sunlight-mode .mcard .cols>div{border:2px solid #000}
 body.battery-save .mcard{box-shadow:none;background:#0d1117}
-@media (max-width:639px){
-  .scroll{display:none}
-  .mcards{display:grid;gap:12px}
-}
+
 
 /* ---- Vehicle presets + FX status capsule ---- */
 .vpresets{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:2px 0 8px;margin:0 -4px}
@@ -294,3 +291,42 @@ body.sunlight-mode .update-pill{background:#000;border-color:#000}
 body.battery-save *::before,body.battery-save *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*::before,*::after{animation:none!important;transition:none!important}.glide-ind,.tank-fill{transition:none!important}}
 body.battery-save .glide-ind,body.battery-save .tank-fill{transition:none!important}
+
+/* ---- v1.0.8: value-first layout ---- */
+.fxbar{margin-bottom:10px}.fxbar .fxh{padding:2px 0}.fxbar .fx{margin:0}
+.fxconv{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0 2px}.fxconv input{width:36%}
+.strip4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.gt{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 7px;min-height:64px;min-width:0;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--text);text-align:left;cursor:pointer}
+.gt.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:rgba(245,184,61,.08)}
+.gt .gn{font-size:.68rem;font-weight:700;color:var(--muted)}.gt b{font-size:1.02rem}.gt small{font-size:.6rem;color:var(--muted);white-space:nowrap}
+body.sunlight-mode .gt{border:2px solid #000}body.sunlight-mode .gt.on{background:#000;color:#fff}body.sunlight-mode .gt.on .gn,body.sunlight-mode .gt.on small{color:#fff}
+.vpresets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;overflow:visible;padding:2px 0 8px;margin:0}
+.vp{min-width:0;padding:6px 6px;border-radius:14px;text-align:center}
+.vpresets .glide-ind{border-radius:14px}
+#cashReset{margin:0 0 8px}
+.mwrap{overflow-x:hidden}
+.mtbl{table-layout:fixed;min-width:0;width:100%}
+.mtbl th,.mtbl td{padding:6px 3px;vertical-align:top;white-space:normal;text-align:center}
+.mtbl thead th{font-size:.7rem;color:var(--muted)}
+.mtbl thead th:first-child{width:27%;text-align:left}.mtbl thead th:last-child{width:19%}
+.mtbl th[scope=row]{text-align:left;font-weight:700;font-size:.85rem}
+.mtbl th[scope=row] small{display:block;font-weight:500;color:var(--muted);font-size:.66rem}
+.mtbl tr.sel{background:rgba(245,184,61,.08)}
+.pcell{background:none;border:0;color:var(--text);cursor:pointer;padding:2px;width:100%;text-align:center;font:inherit;min-height:34px}
+.pcell .num{font:700 .98rem 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}.pcell small{font-size:.62rem;color:var(--muted)}.pen{font-size:.7rem;opacity:.55}
+.pc .sub-num{font-size:.68rem}
+.pedit{width:100%;font:700 1rem 'JetBrains Mono',monospace;padding:8px 4px;border-radius:10px;border:2px solid var(--accent);background:var(--bg);color:var(--text);text-align:center}
+.unlock.mini{padding:0 6px;min-width:44px;min-height:34px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:.8rem;cursor:pointer}
+.pc.lockfx{animation:glow 1.1s ease-out;border-radius:10px}
+.stns{display:block}
+.stn{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px solid var(--line);margin:0}
+.stn-n{font-size:.82rem;font-weight:600;min-width:0;flex:1}
+.stn-l{display:flex;gap:5px;flex:none}.stn-l .chip{padding:4px 9px;font-size:.74rem;min-width:44px}
+.news li{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.news .nt{min-width:0;flex:1}.news a{overflow-wrap:anywhere}
+.ext{color:var(--accent);font-weight:800}
+.ic-btn{flex:none;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;min-width:44px;min-height:44px;font-size:1rem;cursor:pointer}
+.fallback a small{display:block}
+.fading{opacity:0;transition:opacity 120ms ease}
+.fxbar.acc .acc-b{margin-top:0}
+.acc.card>.acc-h{min-height:44px}
