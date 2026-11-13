@@ -10,15 +10,20 @@
 
   /* November 2026 baseline: UAE = Fuel Price Committee; PH = Metro Manila benchmark averages. */
   const BASELINE = {
-    month: '2026-11',
+    month: '2026-11', phVer: '2026-11-10',
     uae: [['Super 98', 4.16], ['Special 95', 4.04], ['E-Plus 91', 3.97], ['Diesel', 4.75]],
-    ph:  [['RON 100 / Blaze', 68.00], ['RON 95 / Premium Unleaded', 58.15], ['RON 91 / Regular Unleaded', 56.65], ['Diesel', 56.75]]
+    ph:  [['RON 100 / Blaze', 80.90], ['RON 95 / Premium Unleaded', 70.90], ['RON 91 / Regular Unleaded', 72.50], ['Diesel', 90.35]]
   };
   /* Official UAE Fuel Price Committee prices, AED/L. */
   const HISTORY = { labels: ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'], s98: [3.95, 3.40, 3.60, 3.80, 4.40, 4.16], s95: [3.83, 3.29, 3.49, 3.69, 4.28, 4.04] };
   const ADDONS = { coffee: ['Oasis Coffee', 12], manual: ['Manual Wash', 40], auto: ['Auto Wash', 30] };
   const clone = o => JSON.parse(JSON.stringify(o));
   const saved = store.get('prices.v2', null);
+  if (saved && saved.phVer !== BASELINE.phVer) {          // refresh old PH baseline, keep rows the user edited
+    saved.ph.forEach((row, i) => { if (!(saved.edited && saved.edited['ph' + i])) row[1] = BASELINE.ph[i][1]; row[0] = BASELINE.ph[i][0]; });
+    saved.phVer = BASELINE.phVer; try { localStorage.setItem('dubaifuel.prices.v2', JSON.stringify(saved)); } catch (_) {}
+  }
+  const APP_VERSION = 'v1.0.7', PH_NOTE = 'PH: Nov 10, 2026 DOE post-rollback avg';
   const state = {
     rate: store.get('rate', 15.8), live: false, rateTime: 0,
     dir: store.get('dir', 'AED2PHP'), liters: store.get('liters', 67), grade: store.get('grade', 0),
@@ -26,6 +31,7 @@
     addons: store.get('addons', []), salik: store.get('salik', 4), split: 1, qb: { cur: 'AED', amt: 50 }, cat: 'all',
     news: { items: [], t: 0 }, prices: saved || { ...clone(BASELINE), edited: {}, src: 'official baseline' }
   };
+  state.animating = false; state.lockFx = null;
   const persistPrices = () => store.set('prices.v2', state.prices);
   const fmt = (n, d = 2) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const monthLabel = ym => new Date(ym + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -84,7 +90,7 @@
     let h = `<tr><th>Grade (UAE / PH)</th><th>UAE AED/L</th><th>UAE PHP/L</th><th>PH PHP/L</th><th>UAE ${L}L</th><th>PH ${L}L</th><th>UAE vs PH</th></tr>`;
     const uaeMoney = (aed, tank) => P === 'AED' ? [fmt(aed) + ' AED', fmt(aed * r, tank ? 0 : 2) + ' PHP'] : [fmt(aed * r, tank ? 0 : 2) + ' PHP', fmt(aed) + ' AED'];
     const phMoney = (php, tank) => P === 'PHP' ? [fmt(php, tank ? 0 : 2) + ' PHP', fmt(php / r) + ' AED'] : [fmt(php / r) + ' AED', fmt(php, tank ? 0 : 2) + ' PHP'];
-    const lock = (c, i, label) => edited[c + i] ? `<div class="lock"><span class="pill warn">Custom Price Locked</span><button class="btn ghost unlock" data-c="${c}" data-i="${i}" aria-label="Unlock ${label} price and sync">Unlock / Sync</button></div>` : '';
+    const lock = (c, i, label) => edited[c + i] ? `<div class="lock"><span class="pill warn"><span class="padlock" aria-hidden="true">🔒</span> Custom Price Locked</span><button class="btn ghost unlock" data-c="${c}" data-i="${i}" aria-label="Unlock ${label} price and sync"><span class="sync-ic" aria-hidden="true">⟳</span> Unlock / Sync</button></div>` : '';
     let cards = '';
     uae.forEach(([name, price], i) => {
       const phName = ph[i][0], phPrice = ph[i][1], uaePhp = price * r, diff = (uaePhp - phPrice) / phPrice * 100, cls = diff <= 0 ? 'good' : 'bad';
@@ -95,12 +101,13 @@
         <td class="mono">${fmt(phPrice * L, 0)} PHP<br><small class="note">${fmt(phPrice * L / r)} AED</small></td>
         <td><span class="pill ${cls}">${diff > 0 ? '+' : ''}${fmt(diff, 1)}%</span></td></tr>`;
       const [ul, ul2] = uaeMoney(price), [ut, ut2] = uaeMoney(price * L, true), [pl, pl2] = phMoney(phPrice), [pt, pt2] = phMoney(phPrice * L, true);
-      cards += `<article class="mcard${i === state.grade ? ' sel' : ''}"><header><h3>${name} <span>vs ${phName}</span></h3><span class="pill ${cls}">${diff > 0 ? '+' : ''}${fmt(diff, 1)}%</span></header>
+      cards += `<article class="mcard${i === state.grade ? ' sel' : ''}${state.lockFx && state.lockFx.i === i ? ' lockfx' : ''}"><header><h3>${name} <span>vs ${phName}</span></h3><span class="pill ${cls}">${diff > 0 ? '+' : ''}${fmt(diff, 1)}%</span></header>
         <div class="cols"><div><h4>🇦🇪 UAE</h4><p class="lbl">Per litre</p><p class="num">${ul}</p><p class="sub-num">≈ ${ul2}</p><p class="lbl">${L} L tank</p><p class="num">${ut}</p><p class="sub-num">≈ ${ut2}</p>${lock('uae', i, name + ' UAE')}</div>
         <div><h4>🇵🇭 Philippines</h4><p class="lbl">Per litre</p><p class="num">${pl}</p><p class="sub-num">≈ ${pl2}</p><p class="lbl">${L} L tank</p><p class="num">${pt}</p><p class="sub-num">≈ ${pt2}</p>${lock('ph', i, phName + ' Philippines')}</div></div>
         <footer><button class="btn ghost price" data-c="uae" data-i="${i}">Edit AED/L</button><button class="btn ghost price" data-c="ph" data-i="${i}">Edit PHP/L</button></footer></article>`;
     });
     $('#matrix').innerHTML = h; $('#matrixCards').innerHTML = cards;
+    $('#phNote').textContent = PH_NOTE + (Date.now() > Date.parse('2026-11-17T00:00:00+08:00') ? ' · DOE adjusts weekly, so this may have changed' : '');
     const stale = state.prices.month !== new Date().toISOString().slice(0, 7), el = $('#priceStatus');
     el.textContent = `UAE prices: ${monthLabel(state.prices.month)} (${state.prices.src}).` + (stale ? ' A newer monthly announcement may be out: tap Sync UAE prices.' : '') + ' * = your edit.';
     el.style.color = stale ? 'var(--accent)' : '';
@@ -109,16 +116,20 @@
   document.addEventListener('click', e => {
     const u = e.target.closest('.unlock');
     if (u) {
-      const { c, i } = u.dataset; delete state.prices.edited[c + i]; state.prices[c][i][1] = BASELINE[c][i][1];
-      persistPrices(); refresh(); if (c === 'uae') syncUae(true); else toast('Price unlocked'); return;
+      const { c, i } = u.dataset; u.classList.add('spinning');
+      setTimeout(() => {
+        delete state.prices.edited[c + i]; state.prices[c][i][1] = BASELINE[c][i][1];
+        persistPrices(); refresh(); if (c === 'uae') syncUae(true); else toast('Price unlocked');
+      }, motionOK() ? 480 : 0);
+      return;
     }
     const td = e.target.closest('.price'); if (!td) return;
     const { c, i } = td.dataset, cur = state.prices[c][i][1];
     const v = parseFloat(prompt(`New ${c === 'uae' ? 'AED' : 'PHP'}/L price for ${state.prices[c][i][0]}:`, cur));
-    if (v > 0) { state.prices[c][i][1] = v; state.prices.edited[c + i] = true; persistPrices(); refresh(); }
+    if (v > 0) { state.prices[c][i][1] = v; state.prices.edited[c + i] = true; state.lockFx = { c, i: +i }; persistPrices(); refresh(); setTimeout(() => { state.lockFx = null; }, 1200); }
   });
   $('#resetPrices').onclick = () => { state.prices = { ...clone(BASELINE), edited: {}, src: 'official baseline' }; persistPrices(); refresh(); toast('Baseline restored'); };
-  $$('[data-prim]').forEach(b => b.onclick = () => { buzz(); state.primary = b.dataset.prim; store.set('primary', state.primary); $$('[data-prim]').forEach(x => x.classList.toggle('on', x === b)); renderMatrix(); });
+  $$('[data-prim]').forEach(b => b.onclick = () => { buzz(); state.primary = b.dataset.prim; store.set('primary', state.primary); $$('[data-prim]').forEach(x => x.classList.toggle('on', x === b)); renderMatrix(); const mc = $('#matrixCards'); mc.classList.remove('swapping'); void mc.offsetWidth; mc.classList.add('swapping'); setTimeout(() => mc.classList.remove('swapping'), 220); });
 
   /* ---------- rewards, sparkline ---------- */
   function renderRewards() {
@@ -140,20 +151,30 @@
   function renderStop() {
     const a = active(), fuel = a.price * state.liters, items = state.addons.filter(k => ADDONS[k]);
     const extra = items.reduce((s, k) => s + ADDONS[k][1], 0), tot = fuel + extra;
-    $('#stopOut').innerHTML = `<div class="ln"><span>${a.name} · ${state.liters} L</span><b class="mono">${fmt(fuel)} AED</b></div>` +
+    const R = (k, v, d) => `<span data-roll="${k}" data-to="${v}" data-d="${d}"></span>`;
+    $('#stopOut').innerHTML = `<div class="ln"><span>${a.name} · ${state.liters} L</span><b class="mono">${R('fuel', fuel, 2)} AED</b></div>` +
       items.map(k => `<div class="ln"><span>${ADDONS[k][0]}</span><b class="mono">${fmt(ADDONS[k][1])} AED</b></div>`).join('') +
-      `<div class="ln tot"><span>Station visit total</span><b class="mono">${fmt(tot)} AED ≈ ${fmt(tot * state.rate, 0)} PHP</b></div>`;
+      `<div class="ln tot"><span>Station visit total</span><b class="mono">${R('totA', tot, 2)} AED ≈ ${R('totP', tot * state.rate, 0)} PHP</b></div>`;
+    rollNums('#stopOut', state.animating);
     $$('.ad').forEach(b => { const on = state.addons.includes(b.dataset.k); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   }
-  $$('.ad').forEach(b => b.onclick = () => { buzz(); const k = b.dataset.k; state.addons = state.addons.includes(k) ? state.addons.filter(x => x !== k) : [...state.addons, k]; store.set('addons', state.addons); renderStop(); });
+  $$('.ad').forEach(b => b.onclick = () => { buzz(); const k = b.dataset.k; state.addons = state.addons.includes(k) ? state.addons.filter(x => x !== k) : [...state.addons, k]; store.set('addons', state.addons); const ic = b.querySelector('.ic'); if (ic) { ic.classList.remove('pop'); void ic.offsetWidth; ic.classList.add('pop'); } renderStop(); });
   function renderQuick() {
     const r = state.rate, { cur, amt } = state.qb, aed = cur === 'AED' ? amt : amt / r, u = state.prices.uae;
     $$('.qb').forEach(b => b.classList.toggle('on', b.dataset.cur === cur && +b.dataset.amt === amt));
-    $('#qbOut').textContent = `${cur === 'AED' ? 'AED ' + fmt(amt, 0) : '₱' + fmt(amt, 0) + ' (≈ AED ' + fmt(aed) + ')'} buys ${fmt(aed / u[0][1])} L of Super 98 or ${fmt(aed / u[1][1])} L of Special 95.`;
+    const Rq = (k, v) => `<span data-roll="${k}" data-to="${v}" data-d="2"></span>`;
+    $('#qbOut').innerHTML = `${cur === 'AED' ? 'AED ' + fmt(amt, 0) : '₱' + fmt(amt, 0) + ' (≈ AED ' + fmt(aed) + ')'} buys ${Rq('qb98', aed / u[0][1])} L of Super 98 or ${Rq('qb95', aed / u[1][1])} L of Special 95.`;
+    rollNums('#qbOut', false);
     const a = active(), tank = a.price * state.liters;
-    $('#remit').textContent = `Remittance value: one full ${state.liters} L tank of ${a.name} (${fmt(tank)} AED) equals about ₱${fmt(tank * r, 0)} at today’s rate.`;
+    $('#remit').innerHTML = `Remittance value: one full ${state.liters} L tank of ${a.name} (<span data-roll="rmA" data-to="${tank}" data-d="2"></span> AED) equals about ₱<span data-roll="rmP" data-to="${tank * r}" data-d="0"></span> at today’s rate.`;
+    rollNums('#remit', state.animating);
   }
-  $$('.qb').forEach(b => b.onclick = () => { buzz(); state.qb = { cur: b.dataset.cur, amt: +b.dataset.amt }; renderQuick(); });
+  $$('.qb').forEach(b => b.onclick = e => {
+    buzz(); state.qb = { cur: b.dataset.cur, amt: +b.dataset.amt }; renderQuick();
+    const ic = b.querySelector('.ic'); ripple(b, e); b.classList.add('ok'); if (ic) ic.textContent = '✓';
+    $('#qbOut').classList.add('flash');
+    setTimeout(() => { b.classList.remove('ok'); if (ic) ic.textContent = '⛽'; $('#qbOut').classList.remove('flash'); }, 800);
+  });
 
   function renderBudget() {
     const b = num($('#budget')), a = active(), tank = a.price * state.liters, r = state.rate;
@@ -190,8 +211,9 @@
 
   /* ---------- live syncs ---------- */
   async function syncFx() {
+    $('#fxPill').classList.add('loading');
     const r = await NewsFetcher.getRate();
-    state.rate = r.rate; state.live = r.live; state.rateTime = r.t; store.set('rate', r.rate); refresh();
+    state.rate = r.rate; state.live = r.live; state.rateTime = r.t; store.set('rate', r.rate); refresh(); $('#fxPill').classList.remove('loading');
   }
   async function syncUae(manual) {
     const r = await NewsFetcher.syncUaePrices().catch(() => null);
@@ -206,8 +228,8 @@
   function renderNews() {
     const res = state.news, ul = $('#news'), c = state.cat; ul.innerHTML = '';
     const items = res.items.filter(n => c === 'all' || n.cat === c);
-    items.forEach(n => {
-      const li = document.createElement('li');
+    items.forEach((n, ix) => {
+      const li = document.createElement('li'); li.className = 'fadein'; li.style.animationDelay = (ix * 40) + 'ms';
       const a = document.createElement('a'); a.href = n.link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = n.title;
       const s = document.createElement('small'); s.textContent = n.source + (n.date ? ' · ' + new Date(n.date).toLocaleDateString() : '');
       const b = document.createElement('button'); b.className = 'btn ghost sh'; b.textContent = 'Share'; b.onclick = () => share(n.title, n.link);
@@ -216,8 +238,8 @@
     $('#newsStatus').textContent = res.fallback ? 'Live feeds unavailable right now. Showing official source links.'
       : !items.length ? 'No headlines in this category yet. See the official sources below.'
       : `Updated ${new Date(res.t).toLocaleTimeString()}${res.offline ? ' (saved copy, offline)' : ''}`;
-    $('#fallbackCards').innerHTML = NewsFetcher.FALLBACK_CARDS.filter(f => c === 'all' || f.cat === c).map(f => `<a href="${f.url}" target="_blank" rel="noopener">${f.title}<small>${f.note}</small></a>`).join('');
-    $$('.nf').forEach(b => b.classList.toggle('on', b.dataset.cat === c));
+    $('#fallbackCards').innerHTML = NewsFetcher.FALLBACK_CARDS.filter(f => c === 'all' || f.cat === c).map((f, ix) => `<a class="fadein" style="animation-delay:${ix * 40}ms" href="${f.url}" target="_blank" rel="noopener">${f.title}<small>${f.note}</small></a>`).join('');
+    $$('.nf').forEach(b => b.classList.toggle('on', b.dataset.cat === c)); glide($('#newsFilters'));
   }
   async function loadNews(force) { $('#newsStatus').textContent = 'Loading…'; state.news = await NewsFetcher.load(force); renderNews(); }
   $$('.nf').forEach(b => b.onclick = () => { state.cat = b.dataset.cat; renderNews(); });
@@ -257,23 +279,34 @@
       x.fillStyle = '#f2f5fa'; x.font = `700 52px ${F}`; x.fillText(`🇵🇭 ₱${fmt(php)}`, 560, y + 150);
       x.textAlign = 'right'; x.fillStyle = d <= 0 ? '#3ddc97' : '#ff6b6b'; x.font = `800 44px ${F}`; x.fillText(`${d > 0 ? '+' : ''}${fmt(d, 1)}%`, 970, y + 70);
     });
-    x.textAlign = 'center'; x.fillStyle = '#9aa7bd'; x.font = `500 28px ${F}`; x.fillText('% = UAE price vs Philippines after conversion', W / 2, 1780);
+    x.textAlign = 'center'; x.fillStyle = '#9aa7bd'; x.font = `500 28px ${F}`; x.fillText(PH_NOTE + ' · % = UAE vs PH', W / 2, 1780);
     x.fillStyle = '#f5b83d'; x.font = `700 34px ${F}`; x.fillText(APP_URL.replace('https://', ''), W / 2, 1850);
     return new Promise(res => c.toBlob(b => res(b), 'image/png'));
   }
-  $('#storyBtn').onclick = async () => {
-    storyBlob = await drawStory(); if (!storyBlob) return toast('Could not create the image');
-    const old = $('#storyImg').src; if (old.startsWith('blob:')) URL.revokeObjectURL(old);
-    $('#storyImg').src = URL.createObjectURL(storyBlob); $('#storyModal').hidden = false;
+  let storyFile = null, storyUrl = '', storyCanShare = false, storyTimer = 0;
+  function scheduleStory(delay = 400) {          // re-render in the background after prices / slider / FX change
+    clearTimeout(storyTimer);
+    storyTimer = setTimeout(async () => {
+      const b = await drawStory(); if (!b) return;
+      storyBlob = b; storyFile = new File([b], 'dubai-fuel-story.png', { type: 'image/png' });
+      try { storyCanShare = !!(navigator.canShare && navigator.canShare({ files: [storyFile] })); } catch (_) { storyCanShare = false; }
+      const old = storyUrl; storyUrl = URL.createObjectURL(b);
+      if (!$('#storyModal').hidden) $('#storyImg').src = storyUrl;
+      if (old) setTimeout(() => URL.revokeObjectURL(old), 2000);
+    }, delay);
+  }
+  $('#storyBtn').onclick = () => {
+    if (!storyUrl) { scheduleStory(0); return toast('Preparing the story card… tap again in a second'); }
+    $('#storyImg').src = storyUrl; $('#storyModal').hidden = false;
+    const w = $('#sheenWrap'); w.classList.remove('play'); void w.offsetWidth; w.classList.add('play'); confetti();
   };
   $('#storyClose').onclick = () => { $('#storyModal').hidden = true; };
-  $('#storyDl').onclick = () => { const a = document.createElement('a'); a.href = $('#storyImg').src; a.download = 'dubai-fuel-story.png'; document.body.appendChild(a); a.click(); a.remove(); };
-  $('#storyShare').onclick = async () => {
-    const f = new File([storyBlob], 'dubai-fuel-story.png', { type: 'image/png' });
-    try {
-      if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: 'Dubai Fuel Monitor', text: APP_URL });
-      else toast('Image sharing is not supported here. Use Download.');
-    } catch (e) { if (e.name !== 'AbortError') toast('Could not share'); }
+  $('#storyDl').onclick = () => { if (!storyUrl) return; const a = document.createElement('a'); a.href = storyUrl; a.download = 'dubai-fuel-story.png'; document.body.appendChild(a); a.click(); a.remove(); };
+  // navigator.share is called synchronously from the tap, with the already-built file, so iOS keeps user activation.
+  $('#storyShare').onclick = () => {
+    if (!storyFile) return toast('Still preparing, try again');
+    if (!storyCanShare) return toast('Image sharing is not supported here. Use Download.');
+    navigator.share({ files: [storyFile], title: 'Dubai Fuel Monitor', text: APP_URL }).catch(e => { if (e.name !== 'AbortError') toast('Could not share'); });
   };
 
   /* ---------- install + iOS sheet ---------- */
@@ -297,19 +330,21 @@
   let animId = 0;
   function applyLiters(v) {
     state.liters = v; $('#vol').value = v; $('#volOut').textContent = v; store.set('liters', v);
-    $$('.vp').forEach(b => b.classList.toggle('on', +b.dataset.v === v)); refresh();
+    $$('.vp').forEach(b => b.classList.toggle('on', +b.dataset.v === v)); refresh(); glide($('#vpresets'));
   }
   function animateTo(target) {
     const id = ++animId, from = state.liters;
     if (from === target || state.mode === 'battery' || matchMedia('(prefers-reduced-motion: reduce)').matches) return applyLiters(target);
+    state.animating = true;
     const t0 = performance.now(), step = t => {
-      if (id !== animId) return;
+      if (id !== animId) { state.animating = false; return; }
       const p = Math.min(1, (t - t0) / 300), e = 1 - Math.pow(1 - p, 3);
+      if (p >= 1) state.animating = false;
       applyLiters(Math.round(from + (target - from) * e)); if (p < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   }
-  $('#vol').oninput = e => { animId++; applyLiters(+e.target.value); };
+  $('#vol').oninput = e => { animId++; state.animating = false; applyLiters(+e.target.value); };
   $$('.vp').forEach(b => b.onclick = () => { buzz(); animateTo(+b.dataset.v); });
   $('#gradeSel').value = state.grade;
   $('#gradeSel').onchange = e => { state.grade = +e.target.value; store.set('grade', state.grade); refresh(); };
@@ -324,23 +359,125 @@
   $('#dirBtn').onclick = () => { state.dir = state.dir === 'AED2PHP' ? 'PHP2AED' : 'AED2PHP'; store.set('dir', state.dir); renderConverter(); };
   $$('.seg[data-mode]').forEach(b => b.onclick = () => { buzz(); applyMode(b.dataset.mode); });
 
-  /* ---------- pull to refresh ---------- */
-  let y0 = null;
-  addEventListener('touchstart', e => { y0 = scrollY === 0 ? e.touches[0].clientY : null; }, { passive: true });
-  addEventListener('touchmove', e => { if (y0 !== null) $('#ptr').classList.toggle('on', e.touches[0].clientY - y0 > 90); }, { passive: true });
-  addEventListener('touchend', () => { if ($('#ptr').classList.contains('on')) { $('#ptr').classList.remove('on'); buzz(); refreshAll(); } y0 = null; });
-  const refreshAll = () => { syncFx(); syncUae(false); loadNews(true); };
+  /* ---------- pull to refresh (elastic, fuel-drop) ---------- */
+  let y0 = null, pulled = 0, refreshing = false;
+  const ptr = $('#ptr'), drop = ptr.firstElementChild;
+  addEventListener('touchstart', e => { y0 = (scrollY <= 0 && !refreshing && !(e.target.closest && e.target.closest('input,select,.vpresets,#spark,#newsFilters'))) ? e.touches[0].clientY : null; pulled = 0; }, { passive: true });
+  addEventListener('touchmove', e => {
+    if (y0 === null) return; const dy = e.touches[0].clientY - y0;
+    if (dy <= 0) { ptr.style.transform = ''; return; }
+    pulled = dy; ptr.style.transition = 'none';
+    ptr.style.transform = `translate(-50%, ${Math.min(72, dy * .55) - 60}px)`; drop.style.transform = `rotate(${dy * 3}deg)`; ptr.classList.toggle('ready', dy >= 65);
+  }, { passive: true });
+  addEventListener('touchend', async () => {
+    if (y0 === null) return; y0 = null; ptr.style.transition = '';
+    if (pulled >= 65) {
+      refreshing = true; buzz(); ptr.classList.add('spin'); ptr.style.transform = 'translate(-50%, 14px)'; drop.style.transform = '';
+      await Promise.allSettled([syncFx(), syncUae(false), loadNews(true)]);
+      ptr.classList.remove('spin', 'ready'); ptr.style.transform = ''; refreshing = false;
+    } else { ptr.classList.remove('ready'); ptr.style.transform = ''; drop.style.transform = ''; }
+    pulled = 0;
+  });
+  const refreshAll = () => Promise.allSettled([syncFx(), syncUae(false), loadNews(true)]);
+
+  /* ---------- micro-interactions ---------- */
+  const motionOK = () => !(state.mode === 'battery' || matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const rolled = {};
+  function rollNums(scope, instant) {                    // 250ms count up/down for currency and litre figures
+    $$(scope + ' [data-roll]').forEach(el => {
+      const key = el.dataset.roll, to = +el.dataset.to, d = +(el.dataset.d || 0), from = rolled[key] === undefined ? to : rolled[key];
+      const draw = v => { el.textContent = fmt(v, d); };
+      cancelAnimationFrame(rolled['raf' + key]);
+      if (instant || !motionOK() || from === to) { draw(to); rolled[key] = to; return; }
+      draw(from); const t0 = performance.now();
+      const step = t => { const p = Math.min(1, (t - t0) / 250), v = from + (to - from) * (1 - Math.pow(1 - p, 3)); draw(v); rolled[key] = p < 1 ? v : to; if (p < 1) rolled['raf' + key] = requestAnimationFrame(step); };
+      rolled['raf' + key] = requestAnimationFrame(step);
+    });
+  }
+  function glide(box) {                                  // spring-sliding active indicator behind pills
+    const ind = box && box.querySelector('.glide-ind'), on = box && box.querySelector('.on'); if (!ind || !on) return;
+    const first = !ind.dataset.ready; if (first) ind.style.transition = 'none';
+    ind.style.width = on.offsetWidth + 'px'; ind.style.height = on.offsetHeight + 'px'; ind.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop}px)`;
+    if (first) requestAnimationFrame(() => { ind.style.transition = ''; ind.dataset.ready = 1; });
+    if (box.scrollWidth > box.clientWidth) box.scrollTo({ left: on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2, behavior: motionOK() ? 'smooth' : 'auto' });
+  }
+  const TANK_COL = ['#f5b83d', '#22d3ee', '#10b981', '#94a3b8'];   // Super 98 gold, Special 95 cyan, E-Plus 91 emerald, Diesel slate
+  function renderTank() {
+    const f = $('#tankFill'); f.style.transform = `scaleX(${state.liters / 140})`; f.style.setProperty('--fill', TANK_COL[state.grade]);
+    $('#tankLbl').textContent = `${state.liters} L · ${active().name}`;
+  }
+  function ripple(btn, e) {
+    if (!motionOK()) return; const r = btn.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, s = document.createElement('span');
+    const x = e && e.clientX ? e.clientX - r.left : r.width / 2, y = e && e.clientY ? e.clientY - r.top : r.height / 2;
+    s.className = 'ripple'; s.style.cssText = `width:${d}px;height:${d}px;left:${x - d / 2}px;top:${y - d / 2}px`; btn.appendChild(s); setTimeout(() => s.remove(), 600);
+  }
+  function confetti() {
+    if (!motionOK()) return; const box = $('#confetti'); box.innerHTML = '';
+    for (let i = 0; i < 16; i++) {
+      const p = document.createElement('i'); p.style.cssText = `left:${10 + Math.random() * 80}%;background:${['#f5b83d', '#22d3ee', '#3ddc97', '#fff'][i % 4]};--dx:${(Math.random() - .5) * 120}px;animation-delay:${Math.random() * 150}ms`; box.appendChild(p);
+    }
+    setTimeout(() => { box.innerHTML = ''; }, 1300);
+  }
+  function initSparkScrub() {                            // touch / hover tooltip with the exact monthly rate
+    const box = $('#spark'), svg = box.querySelector('svg'); if (!svg) return;
+    const W = 320, H = 96, p = 10, all = [...HISTORY.s98, ...HISTORY.s95], lo = Math.min(...all) - .05, hi = Math.max(...all) + .05;
+    const X = i => p + i * (W - 2 * p) / 5, Y = v => H - p - (v - lo) / (hi - lo) * (H - 2 * p), NS = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(NS, 'line'); g.setAttribute('y1', 0); g.setAttribute('y2', H); g.setAttribute('stroke', 'var(--muted)'); g.setAttribute('stroke-dasharray', '3 3'); g.setAttribute('opacity', 0); svg.appendChild(g);
+    const mk = col => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('r', 6); c.setAttribute('fill', col); c.setAttribute('stroke', 'var(--bg)'); c.setAttribute('stroke-width', 2); c.setAttribute('opacity', 0); svg.appendChild(c); return c; };
+    const d98 = mk('var(--accent)'), d95 = mk('var(--muted)'), tip = document.createElement('div'); tip.className = 'spark-tip'; tip.hidden = true; box.appendChild(tip);
+    let hideT = 0;
+    const show = e => {
+      const rc = svg.getBoundingClientRect(), x = (e.clientX - rc.left) / rc.width * W, i = Math.max(0, Math.min(5, Math.round((x - p) / ((W - 2 * p) / 5))));
+      g.setAttribute('x1', X(i)); g.setAttribute('x2', X(i)); g.setAttribute('opacity', .6);
+      d98.setAttribute('cx', X(i)); d98.setAttribute('cy', Y(HISTORY.s98[i])); d98.setAttribute('opacity', 1); d95.setAttribute('cx', X(i)); d95.setAttribute('cy', Y(HISTORY.s95[i])); d95.setAttribute('opacity', 1);
+      tip.textContent = `${HISTORY.labels[i]} 2026: Super 98 ${fmt(HISTORY.s98[i])} · Special 95 ${fmt(HISTORY.s95[i])} AED/L`; tip.hidden = false;
+      const px = X(i) / W * rc.width; tip.style.left = Math.max(tip.offsetWidth / 2, Math.min(rc.width - tip.offsetWidth / 2, px)) + 'px';
+      clearTimeout(hideT); hideT = setTimeout(hide, 2500);
+    };
+    const hide = () => { tip.hidden = true; g.setAttribute('opacity', 0); d98.setAttribute('opacity', 0); d95.setAttribute('opacity', 0); };
+    box.style.touchAction = 'pan-y';
+    box.addEventListener('pointerdown', e => { try { box.setPointerCapture(e.pointerId); } catch (_) {} show(e); });
+    box.addEventListener('pointermove', show); box.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
+  }
+  function initAcc() {                                   // grid-template-rows 0fr -> 1fr accordions
+    $$('.acc-h').forEach(h => h.onclick = () => { const open = h.closest('.acc').classList.toggle('open'); h.setAttribute('aria-expanded', open); buzz(); });
+  }
+  function initTipSwipe() {
+    const el = $('#tipBanner'); let x0 = null, dx = 0; el.style.touchAction = 'pan-y';
+    el.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; dx = 0; el.style.transition = 'none'; }, { passive: true });
+    el.addEventListener('touchmove', e => { if (x0 === null) return; dx = e.touches[0].clientX - x0; el.style.transform = `translateX(${dx}px)`; el.style.opacity = String(1 - Math.min(1, Math.abs(dx) / 260)); }, { passive: true });
+    el.addEventListener('touchend', () => {
+      if (x0 === null) return; x0 = null; el.style.transition = 'transform .25s cubic-bezier(.34,1.56,.64,1), opacity .25s';
+      if (Math.abs(dx) > 90) { el.style.transform = `translateX(${dx > 0 ? '110%' : '-110%'})`; el.style.opacity = '0'; setTimeout(() => { store.set('tipHide', true); el.hidden = true; }, 250); }
+      else { el.style.transform = ''; el.style.opacity = ''; }
+    });
+  }
+  function initUpdateToast() {                           // slide-up pill when a new service worker takes over
+    const pill = $('#updatePill'), had = !!(navigator.serviceWorker && navigator.serviceWorker.controller); let reg = null;
+    pill.textContent = `App updated to ${APP_VERSION} — Tap to reload`;
+    const show = () => { pill.hidden = false; requestAnimationFrame(() => pill.classList.add('show')); };
+    pill.onclick = () => { if (reg && reg.waiting) { reg.waiting.postMessage('SKIP_WAITING'); setTimeout(() => location.reload(), 300); } else location.reload(); };
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) show(); });
+    addEventListener('load', () => navigator.serviceWorker.register('./sw.js').then(r => {
+      reg = r; if (r.waiting && navigator.serviceWorker.controller) show();
+      r.addEventListener('updatefound', () => { const w = r.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && r.waiting && navigator.serviceWorker.controller) show(); }); });
+      setInterval(() => r.update().catch(() => {}), 60 * 60 * 1000);
+    }).catch(() => {}));
+  }
 
   /* ---------- render everything ---------- */
-  function refresh() { renderConverter(); renderMatrix(); renderRewards(); renderStop(); renderQuick(); renderBudget(); renderCommute(); }
+  function refresh() { renderConverter(); renderMatrix(); renderRewards(); renderStop(); renderQuick(); renderBudget(); renderCommute(); renderTank(); scheduleStory(); }
 
   applyMode(state.mode);
   $$('[data-prim]').forEach(b => b.classList.toggle('on', b.dataset.prim === state.primary));
   applyLiters(state.liters); renderSpark(); renderTrackers(); renderTip(); renderStations(); loadNews(false);
+  initSparkScrub(); initAcc(); initTipSwipe(); initUpdateToast();
+  addEventListener('resize', () => { glide($('#vpresets')); glide($('#newsFilters')); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { glide($('#vpresets')); glide($('#newsFilters')); });
   syncFx(); syncUae(false);
   setInterval(syncFx, 15 * 60 * 1000); setInterval(() => syncUae(false), 6 * 60 * 60 * 1000);
   setInterval(() => { renderFx(); renderTrackers(); }, 30000);
   addEventListener('online', refreshAll); addEventListener('offline', renderFx);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { syncFx(); renderTrackers(); } });
-  if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 })();
