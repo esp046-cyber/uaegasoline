@@ -23,7 +23,7 @@
     saved.ph.forEach((row, i) => { if (!(saved.edited && saved.edited['ph' + i])) row[1] = BASELINE.ph[i][1]; row[0] = BASELINE.ph[i][0]; });
     saved.phVer = BASELINE.phVer; try { localStorage.setItem('dubaifuel.prices.v2', JSON.stringify(saved)); } catch (_) {}
   }
-  const APP_VERSION = 'v1.0.9', PH_NOTE = 'PH: Nov 10, 2026 DOE post-rollback avg';
+  const APP_VERSION = 'v1.0.10', PH_NOTE = 'PH: Nov 10, 2026 DOE post-rollback avg';
   const state = {
     rate: store.get('rate', 15.8), live: false, rateTime: 0,
     dir: store.get('dir', 'AED2PHP'), liters: (store.get('car', null) || {}).liters || store.get('liters', 67), grade: store.get('grade', 0),
@@ -137,7 +137,7 @@
     }
     const pc = e.target.closest('.pcell'); if (pc) startEdit(pc);
   });
-  $('#resetPrices').onclick = () => { state.prices = { ...clone(BASELINE), edited: {}, src: 'official baseline' }; persistPrices(); refresh(); toast('Baseline restored'); };
+  $('#resetPrices').onclick = () => { if (!confirm('Reset all prices to the November 2026 baseline? Prices you edited will be removed.')) return; state.prices = { ...clone(BASELINE), edited: {}, src: 'official baseline' }; persistPrices(); refresh(); toast('Baseline restored'); };
   $$('[data-prim]').forEach(b => b.onclick = () => { buzz(); vt(() => { state.primary = b.dataset.prim; store.set('primary', state.primary); $$('[data-prim]').forEach(x => x.classList.toggle('on', x === b)); refresh(); const mc = $('#matrix'); mc.classList.remove('swapping'); void mc.offsetWidth; mc.classList.add('swapping'); setTimeout(() => mc.classList.remove('swapping'), 220); }); });
 
   /* ---------- rewards, sparkline ---------- */
@@ -242,7 +242,7 @@
     state.prices.month = r.month; state.prices.src = 'synced from news'; persistPrices(); refresh();
     if (manual) toast('UAE prices updated');
   }
-  $('#syncPrices').onclick = () => syncUae(true);
+  $('#syncPrices').onclick = () => busy($('#syncPrices'), () => syncUae(true));
 
   /* ---------- news ---------- */
   function renderNews() {
@@ -263,13 +263,13 @@
     $('#fallbackCards').innerHTML = NewsFetcher.FALLBACK_CARDS.filter(f => c === 'all' || f.cat === c).map((f, ix) => `<a class="fadein" style="animation-delay:${ix * 40}ms" href="${f.url}" target="_blank" rel="noopener">${f.title} <span class="ext" aria-hidden="true">↗</span><small>${f.note}</small></a>`).join('');
     $$('.nf').forEach(b => b.classList.toggle('on', b.dataset.cat === c)); glide($('#newsFilters'));
   }
-  async function loadNews(force) { $('#newsStatus').textContent = 'Loading…'; $('#news').innerHTML = '<li class="skel"></li><li class="skel"></li><li class="skel"></li>'; state.news = await NewsFetcher.load(force); renderNews(); }
+  async function loadNews(force) { $('#newsStatus').textContent = 'Loading…'; $('#news').innerHTML = '<li class="skel"></li><li class="skel"></li><li class="skel"></li>'; state.news = await NewsFetcher.load(force); renderNews(); if (state.news.offline && force) toast('Could not reach live news. Showing saved headlines.'); }
   $$('.nf').forEach(b => b.onclick = () => {
     state.cat = b.dataset.cat; $$('.nf').forEach(x => x.classList.toggle('on', x === b)); glide($('#newsFilters'));
     if (!motionOK()) return renderNews();
     $('#news').classList.add('fading'); $('#fallbackCards').classList.add('fading'); setTimeout(renderNews, 120);   // fade out, then staggered fade in
   });
-  $('#refreshNews').onclick = () => loadNews(true);
+  $('#refreshNews').onclick = () => busy($('#refreshNews'), () => loadNews(true));
 
   /* ---------- sharing ---------- */
   async function share(text, url = configUrl()) {
@@ -326,12 +326,12 @@
   }
   let storyFile = null, storyUrl = '', storyCanShare = false, storyTimer = 0;
   function scheduleStory(delay = 400) {          // re-render in the background after prices / slider / FX change
-    clearTimeout(storyTimer);
+    clearTimeout(storyTimer); $('#storyShare').disabled = true;
     storyTimer = setTimeout(async () => {
       const b = await drawStory(); if (!b) return;
       storyBlob = b; storyFile = new File([b], 'dubai-fuel-story.png', { type: 'image/png' });
       try { storyCanShare = !!(navigator.canShare && navigator.canShare({ files: [storyFile] })); } catch (_) { storyCanShare = false; }
-      const old = storyUrl; storyUrl = URL.createObjectURL(b);
+      $('#storyShare').disabled = false; const old = storyUrl; storyUrl = URL.createObjectURL(b);
       if (!$('#storyModal').hidden) $('#storyImg').src = storyUrl;
       if (old) setTimeout(() => URL.revokeObjectURL(old), 2000);
     }, delay);
@@ -361,6 +361,7 @@
   const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   const sheet = open => { $('#iosModal').hidden = !open; };
   $('#helpBtn').onclick = () => sheet(true);
+  $('#installHow').onclick = async () => { if (deferred) { deferred.prompt(); await deferred.userChoice; deferred = null; } else sheet(true); };
   $('#iosGot').onclick = () => sheet(false);
   $('#iosHide').onclick = () => { store.set('iosHide', true); store.set('iosBannerHide', true); $('#iosBanner').hidden = true; sheet(false); toast('You can reopen this from the ? button'); };
   $('#iosModal').addEventListener('click', e => { if (e.target.id === 'iosModal') sheet(false); });
@@ -458,8 +459,9 @@
   $('#geoBtn').onclick = () => {
     if (!navigator.geolocation) return toast('Location is not available on this device');
     $('#geoNote').textContent = 'Finding you…';
-    navigator.geolocation.getCurrentPosition(p => { state.geo = { lat: +p.coords.latitude.toFixed(4), lng: +p.coords.longitude.toFixed(4) }; $('#geoNote').textContent = 'Map links now search near you.'; renderStations(); },
-      () => { $('#geoNote').textContent = ''; toast('Location permission denied or unavailable'); }, { timeout: 8000, maximumAge: 60000 });
+    return busy($('#geoBtn'), () => new Promise(done => navigator.geolocation.getCurrentPosition(p => {
+      state.geo = { lat: +p.coords.latitude.toFixed(4), lng: +p.coords.longitude.toFixed(4) }; $('#geoNote').textContent = 'Map links now search near you.'; renderStations(); toast('Location found'); done();
+    }, () => { $('#geoNote').textContent = 'Location is off. Allow it in your browser settings to use this.'; toast('Could not get your location'); done(); }, { timeout: 8000, maximumAge: 60000 })));
   };
   $('#icsBtn').onclick = () => {
     const d = new Date(), p = n => String(n).padStart(2, '0'); let last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
@@ -481,7 +483,7 @@
   function renderCar() {
     const car = store.get('car', null), box = $('#carChip'); box.innerHTML = ''; if (!car) return;
     const b = document.createElement('button'); b.className = 'chip'; b.textContent = `🚗 ${car.name} · ${car.liters} L`; b.onclick = () => { buzz(); animateTo(car.liters); };
-    const x = document.createElement('button'); x.className = 'chip'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove saved car'); x.onclick = () => { store.set('car', null); renderCar(); };
+    const x = document.createElement('button'); x.className = 'chip'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove saved car'); x.onclick = () => { if (!confirm('Remove your saved car?')) return; store.set('car', null); renderCar(); toast('Saved car removed'); };
     box.append(b, x);
   }
   $('#carSave').onclick = () => { store.set('car', { name: $('#carName').value.trim() || 'My car', liters: Math.round(state.liters) }); renderCar(); toast('Saved as your default tank'); };
@@ -489,9 +491,58 @@
     const a = active(), r = state.rate, t = state.total;
     $('#miniBar').textContent = `${LT()} L · ${a.name} · ` + (state.primary === 'AED' ? `${fmt(t)} AED (₱${fmt(t * r, 0)})` : `₱${fmt(t * r, 0)} (${fmt(t)} AED)`);
   }
-  function initMini() {
-    if (!('IntersectionObserver' in window)) return;
-    new IntersectionObserver(([en]) => { $('#miniBar').hidden = !(!en.isIntersecting && en.boundingClientRect.bottom < 0); }).observe($('#calc'));
+  function initMini() {                                  // scroll check (works when the nav jumps past the calculator)
+    const calc = $('#calc'), bar = $('#miniBar'); let t = false;
+    const upd = () => { t = false; bar.hidden = !(calc.getBoundingClientRect().bottom < 0); };
+    addEventListener('scroll', () => { if (!t) { t = true; requestAnimationFrame(upd); } }, { passive: true }); addEventListener('resize', upd); upd();
+  }
+
+  /* ---------- navigation: bottom bar (mobile) / top bar (desktop) ---------- */
+  async function busy(btn, fn) {                         // loading state + no double runs
+    if (btn.classList.contains('loading')) return;
+    btn.classList.add('loading'); btn.setAttribute('aria-busy', 'true');
+    try { return await fn(); } finally { btn.classList.remove('loading'); btn.removeAttribute('aria-busy'); }
+  }
+  let lastBtn = null, lastT = 0;
+  document.addEventListener('click', e => {              // ignore accidental double taps on action buttons
+    const b = e.target.closest('.btn'); if (!b) return; const now = Date.now();
+    if (b === lastBtn && now - lastT < 450) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+    lastBtn = b; lastT = now;
+  }, true);
+  function initNav() {
+    const SECS = ['home', 'fuel', 'tools', 'stations', 'more'], links = $$('#bottomNav [data-nav]');
+    const off = () => (matchMedia('(min-width: 768px)').matches ? 116 : 56), url = id => location.pathname + location.search + '#' + id;
+    let locked = false, lockT = 0, ticking = false;
+    const lock = () => { locked = true; clearTimeout(lockT); lockT = setTimeout(() => { locked = false; spy(); }, 900); };
+    function setActive(id, replace = true) {
+      links.forEach(l => { const on = l.dataset.nav === id; l.classList.toggle('on', on); if (on) l.setAttribute('aria-current', 'location'); else l.removeAttribute('aria-current'); });
+      store.set('navSec', id); if (replace && location.hash !== '#' + id) history.replaceState(null, '', url(id));
+    }
+    function goTo(el, smooth = true) {
+      if (!el) return; const beh = smooth && motionOK() ? 'smooth' : 'auto';
+      if (el.id === 'home') scrollTo({ top: 0, behavior: beh }); else el.scrollIntoView({ behavior: beh, block: 'start' });
+    }
+    links.forEach(l => l.addEventListener('click', e => {
+      e.preventDefault(); buzz(); const id = l.dataset.nav; lock(); setActive(id, false);
+      if (location.hash !== '#' + id) history.pushState(null, '', url(id)); goTo(document.getElementById(id));
+    }));
+    document.addEventListener('click', e => {            // quick-access buttons jump to a card (and open it if collapsed)
+      const b = e.target.closest('[data-go]'); if (!b) return; buzz(); const el = document.getElementById(b.dataset.go); if (!el) return;
+      if (el.classList.contains('acc') && !el.classList.contains('open')) el.querySelector('.acc-h').click();
+      const s = el.closest('.sec'); lock(); if (s) { setActive(s.id, false); history.pushState(null, '', url(s.id)); } goTo(el);
+    });
+    function spy() {
+      ticking = false; if (locked) return; let cur = SECS[0];
+      for (const id of SECS) if (document.getElementById(id).getBoundingClientRect().top <= off()) cur = id;
+      if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = SECS[SECS.length - 1];
+      if (!links.some(l => l.dataset.nav === cur && l.classList.contains('on'))) setActive(cur);
+    }
+    addEventListener('scroll', () => { $('#toTop').hidden = scrollY < 700; if (!ticking) { ticking = true; requestAnimationFrame(spy); } }, { passive: true });
+    $('#toTop').onclick = () => { buzz(); lock(); setActive('home', false); history.replaceState(null, '', url('home')); scrollTo({ top: 0, behavior: motionOK() ? 'smooth' : 'auto' }); };
+    addEventListener('popstate', () => { const id = location.hash.slice(1); if (SECS.includes(id)) { lock(); setActive(id, false); goTo(document.getElementById(id)); } });
+    const h = location.hash.slice(1), start = SECS.includes(h) ? h : store.get('navSec', 'home');
+    setActive(SECS.includes(start) ? start : 'home', false);
+    if (SECS.includes(start) && start !== 'home') { const run = () => goTo(document.getElementById(start), false); setTimeout(run, 350); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 60)); }
   }
 
   /* ---------- micro-interactions ---------- */
@@ -582,7 +633,7 @@
   applyMode(state.mode);
   $$('[data-prim]').forEach(b => b.classList.toggle('on', b.dataset.prim === state.primary));
   applyLiters(state.liters); renderSpark(); renderTrackers(); renderTip(); renderStations(); loadNews(false);
-  initSparkScrub(); initAcc(); initUpdateToast(); initMini(); renderCar(); refreshLog();
+  initSparkScrub(); initAcc(); initUpdateToast(); initMini(); renderCar(); refreshLog(); initNav();
   addEventListener('resize', () => { glide($('#vpresets')); glide($('#newsFilters')); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { glide($('#vpresets')); glide($('#newsFilters')); });
   syncFx(); syncUae(false);
