@@ -119,6 +119,10 @@ def main():
     make_og()
     print('Assets generated.')
     if '--zip' in sys.argv:
+        import subprocess
+        v = subprocess.run([sys.executable, os.path.join(ROOT, 'verify_build.py')])
+        if v.returncode:
+            sys.exit('Verification failed, zip not created.')
         zip_project()
 
 if __name__ == '__main__':

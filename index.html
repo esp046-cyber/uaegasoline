@@ -48,10 +48,11 @@
   <button id="iosBannerHow" class="btn">How</button>
   <button id="iosBannerClose" class="btn ghost" aria-label="Dismiss home screen tip">✕</button>
 </div>
+<div id="miniBar" class="minibar" hidden aria-live="polite"></div>
 <main>
   <div class="fxbar acc" id="fxAcc">
     <button class="acc-h fxh" aria-expanded="false" aria-controls="fxB" aria-label="Exchange rate and currency converter">
-      <span id="fxPill" class="fx" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span><span id="fxAge" class="fxage"></span></span><span class="chev" aria-hidden="true"></span></button>
+      <span id="fxPill" class="fx loading" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span><span id="fxAge" class="fxage"></span></span><span class="chev" aria-hidden="true"></span></button>
     <div class="acc-b" id="fxB"><div class="acc-in"><div class="fxconv">
       <input id="amt" type="number" inputmode="decimal" step="any" min="0" value="100" aria-label="Amount to convert">
       <button id="dirBtn" class="btn">AED → PHP</button>
@@ -60,6 +61,7 @@
     </div></div></div>
   </div>
 
+  <div class="row primrow"><span class="note">Show prices in</span><div class="duo" role="group" aria-label="Primary display currency"><button class="seg on" data-prim="AED">AED</button><button class="seg" data-prim="PHP">PHP</button></div></div>
   <section class="card" aria-label="Live UAE fuel prices">
     <div class="strip4" id="strip" role="group" aria-label="Choose fuel grade"></div>
   </section>
@@ -75,6 +77,8 @@
       <button class="vp" data-v="100"><b>SUV</b><span>100 L</span></button>
       <button class="vp" data-v="133"><b>Patrol / Dual-Tank</b><span>133 L</span></button>
     </div>
+    <div class="row prof"><input id="carName" type="text" maxlength="20" placeholder="Name your car" aria-label="Car name"><button id="carSave" class="btn ghost">Save this tank</button></div>
+    <div id="carChip" class="pillrow"></div>
     <input id="vol" type="range" min="10" max="140" value="67" aria-label="Tank volume in litres">
     <div class="tank" aria-hidden="true"><div class="tank-fill" id="tankFill"></div><span class="tank-lbl" id="tankLbl"></span></div>
     <div class="pillrow" id="addons">
@@ -92,7 +96,7 @@
     </div>
     <p class="note" id="qbOut"></p>
     <p class="remit" id="remit"></p>
-    <div class="row"><button id="waBtn" class="btn wa" style="flex:1">Share on WhatsApp</button><button id="storyBtn" class="btn" style="flex:1">Create Story Card</button></div>
+    <div class="row wrap3"><button id="waBtn" class="btn wa">Share on WhatsApp</button><button id="storyBtn" class="btn">Create Story Card</button><button id="copyBtn" class="btn ghost">Copy receipt</button></div>
   </section>
 
   <section class="card modes" aria-label="Display mode">
@@ -101,12 +105,11 @@
     <button data-mode="battery" class="seg">AMOLED</button>
   </section>
   <section class="trackers" aria-label="Price announcement trackers"><div class="trk" id="trkUae"></div><div class="trk" id="trkPh"></div></section>
+  <div class="row" style="margin:-4px 0 10px"><button id="icsBtn" class="chip">🔔 Remind me on announcement day</button></div>
 
   <section class="card" id="matrixSec">
     <h2>UAE vs Philippines per litre</h2>
     <p class="note" id="phNote"></p>
-    <div class="row"><span class="note">Primary display</span>
-      <div class="duo" role="group" aria-label="Primary display currency"><button class="seg on" data-prim="AED">AED</button><button class="seg" data-prim="PHP">PHP</button></div></div>
     <div class="mwrap"><table class="tbl mtbl" id="matrix"></table></div>
     <p class="note" id="priceStatus"></p>
     <p class="note" id="matrixNote"></p>
@@ -122,7 +125,7 @@
     <div class="acc-b" id="rewardsB"><div class="acc-in">
       <div class="strip" aria-label="Loyalty and cashback">
         <div><span class="lbl" id="rwLbl">ADNOC Rewards</span><b class="mono" id="pts">—</b><small>points, scaled from the 1,743-point reference receipt</small></div>
-        <div><label class="lbl" for="cbSel">Card fuel rebate</label><select id="cbSel"><option value="0">0%</option><option value="5">5%</option><option value="10">10%</option></select></div>
+        <div><label class="lbl" for="cbSel">Card fuel rebate</label><select id="cbSel"><option value="0">0%</option><option value="2">2%</option><option value="5">5%</option><option value="7.5">7.5%</option><option value="10">10%</option><option value="custom">Custom…</option></select><input id="cbCustom" type="number" inputmode="decimal" step="any" min="0" max="100" placeholder="% rebate" aria-label="Custom rebate percent" hidden><small>Check your card’s own terms for the real rate.</small></div>
         <div><span class="lbl">Net price</span><b class="mono" id="netAed">—</b><small id="netPhp"></small></div>
       </div>
       <h3 class="sub2">Super 98 &amp; Special 95: Jun–Nov 2026 (AED/L)</h3>
@@ -133,6 +136,17 @@
     <div class="row"><label for="budget">Allowance / cap (AED)</label>
       <input id="budget" type="number" inputmode="decimal" step="any" min="0" value="1000" aria-label="Monthly fuel budget in AED"></div>
     <p class="note" id="budgetOut"></p>
+    <div class="bbar" id="bbar" aria-hidden="true"><i id="bfill"></i></div><p class="note" id="bnote"></p>
+    <button id="logFill" class="btn ghost">Log this fill-up</button>
+  </div></div></section>
+
+  <section class="card acc" id="logAcc"><button class="acc-h" aria-expanded="false" aria-controls="logB">Fill-up log &amp; real km/L<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="logB"><div class="acc-in">
+    <div class="fxconv"><input id="logOdo" type="number" inputmode="decimal" step="any" min="0" placeholder="Odometer km" aria-label="Odometer in kilometres">
+      <input id="logL" type="number" inputmode="decimal" step="any" min="0" placeholder="Litres" aria-label="Litres filled">
+      <input id="logAed" type="number" inputmode="decimal" step="any" min="0" placeholder="AED paid" aria-label="AED paid"></div>
+    <div class="row"><button id="logSave" class="btn">Save fill-up</button><button id="logClear" class="btn ghost">Clear log</button></div>
+    <p class="note" id="logSummary"></p><div id="logList" class="stop"></div>
+    <p class="note">Saved on this device only. km/L assumes each fill is to full.</p>
   </div></div></section>
 
   <section class="card acc" id="commute"><button class="acc-h" aria-expanded="false" aria-controls="commuteB">Commute &amp; Toll Estimator<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="commuteB"><div class="acc-in">
@@ -140,6 +154,9 @@
       <select id="route"><option value="65">Discovery Gardens → Downtown Dubai (65 km round trip)</option>
         <option value="240">Jebel Ali → Abu Dhabi Corniche (240 km round trip)</option>
         <option value="85">Dubai Marina → Sharjah (85 km round trip)</option>
+        <option value="50">Jebel Ali ↔ Dubai Marina (~50 km round trip, approx.)</option>
+        <option value="70">Jebel Ali ↔ Downtown (~70 km round trip, approx.)</option>
+        <option value="100">Jebel Ali ↔ Deira (~100 km round trip, approx.)</option>
         <option value="custom">Custom distance</option></select></div>
     <div class="row" id="customKmWrap" hidden><label for="customKm">Round trip (km)</label>
       <input id="customKm" type="number" inputmode="decimal" step="any" min="0" value="50" aria-label="Custom round trip distance in kilometres"></div>
@@ -147,7 +164,7 @@
       <select id="eff"><option value="8">8 km/L (SUV)</option><option value="12" selected>12 km/L (Sedan)</option><option value="16">16 km/L (Hybrid)</option></select></div>
     <div class="row"><label for="gates">Salik gates</label>
       <select id="gates"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
-      <div class="duo" role="group" aria-label="Salik rate"><button class="chip sk on" data-rate="4">AED 4 off-peak</button><button class="chip sk" data-rate="6">AED 6 peak</button></div></div>
+      <div class="duo" role="group" aria-label="Salik rate"><button class="chip sk on" data-rate="4">AED 4 off-peak</button><button class="chip sk" data-rate="6">AED 6 peak</button><button class="chip sk" data-rate="0">AED 0 late night</button></div></div>
     <div class="row"><span>Carpool split</span>
       <div class="pillrow" role="group" aria-label="Carpool split">
         <button class="chip cp on" data-n="1">Solo</button><button class="chip cp" data-n="2">÷ 2</button><button class="chip cp" data-n="3">÷ 3</button><button class="chip cp" data-n="4">÷ 4</button></div></div>
@@ -159,6 +176,7 @@
     <h2>Nearest stations</h2>
     <div class="row"><label for="area">Area</label>
       <select id="area"><option>Jebel Ali</option><option>Discovery Gardens</option><option>Al Furjan</option><option>Sheikh Zayed Road</option></select></div>
+    <div class="row"><button id="geoBtn" class="chip">📍 Use my location</button><span class="note" id="geoNote"></span></div>
     <div id="stationsOut" class="stns"></div>
     <p class="note">Links open a map search, so check the pin before you drive.</p>
   </section>
@@ -200,6 +218,7 @@
 </div>
 <div id="storyModal" class="modal" hidden role="dialog" aria-modal="true" aria-label="Story card preview">
   <div class="sheet storysheet"><div class="grab" aria-hidden="true"></div>
+    <div class="pillrow" id="themePills" role="group" aria-label="Story card theme"><button class="chip th on" data-t="obsidian">Obsidian</button><button class="chip th" data-t="adnoc">ADNOC Blue/Gold</button><button class="chip th" data-t="ofw">Remittance</button></div>
     <div class="sheenwrap" id="sheenWrap"><img id="storyImg" class="storyimg" alt="Story card preview"><div id="confetti" class="confetti" aria-hidden="true"></div></div>
     <div class="row"><button id="storyDl" class="btn" style="flex:1">Download</button><button id="storyShare" class="btn wa" style="flex:1">Share Story Card</button></div>
     <button id="storyClose" class="btn ghost" style="width:100%">Close</button>
