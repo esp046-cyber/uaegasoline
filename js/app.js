@@ -23,15 +23,23 @@
     saved.ph.forEach((row, i) => { if (!(saved.edited && saved.edited['ph' + i])) row[1] = BASELINE.ph[i][1]; row[0] = BASELINE.ph[i][0]; });
     saved.phVer = BASELINE.phVer; try { localStorage.setItem('dubaifuel.prices.v2', JSON.stringify(saved)); } catch (_) {}
   }
-  const APP_VERSION = 'v1.0.8', PH_NOTE = 'PH: Nov 10, 2026 DOE post-rollback avg';
+  const APP_VERSION = 'v1.0.9', PH_NOTE = 'PH: Nov 10, 2026 DOE post-rollback avg';
   const state = {
     rate: store.get('rate', 15.8), live: false, rateTime: 0,
-    dir: store.get('dir', 'AED2PHP'), liters: store.get('liters', 67), grade: store.get('grade', 0),
+    dir: store.get('dir', 'AED2PHP'), liters: (store.get('car', null) || {}).liters || store.get('liters', 67), grade: store.get('grade', 0),
     mode: store.get('mode', 'standard'), primary: store.get('primary', 'AED'), cb: store.get('cb', 0),
     addons: store.get('addons', []), salik: store.get('salik', 4), split: 1, qb: { cur: 'AED', amt: 50 }, cat: 'all',
     news: { items: [], t: 0 }, prices: saved || { ...clone(BASELINE), edited: {}, src: 'official baseline' }
   };
-  state.animating = false; state.lockFx = null; state.cash = null; state.prev = 67; state.editing = false;
+  state.animating = false; state.lockFx = null; state.cash = null; state.prev = 67; state.editing = false; state.geo = null; state.total = 0; state.storyTheme = store.get('storyTheme', 'obsidian');
+  const GRADE_KEYS = ['98', '95', '91', 'diesel'];
+  (() => {                                               // ?grade=95&liters=67&addons=coffee,auto&show=PHP
+    const q = new URLSearchParams(location.search), gi = GRADE_KEYS.indexOf(String(q.get('grade') || '').toLowerCase()), L = parseFloat(q.get('liters'));
+    if (gi >= 0) state.grade = gi; if (L >= 10 && L <= 140) state.liters = L;
+    if (q.has('addons')) state.addons = q.get('addons').split(',').filter(k => ADDONS[k]);
+    if (['AED', 'PHP'].includes(String(q.get('show')).toUpperCase())) state.primary = String(q.get('show')).toUpperCase();
+  })();
+  function configUrl() { return APP_URL + '?' + new URLSearchParams({ grade: GRADE_KEYS[state.grade], liters: String(state.liters), addons: state.addons.join(','), show: state.primary }); }
   const persistPrices = () => store.set('prices.v2', state.prices);
   const fmt = (n, d = 2) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const LT = () => Number.isInteger(state.liters) ? String(state.liters) : fmt(state.liters, 1);
@@ -130,7 +138,7 @@
     const pc = e.target.closest('.pcell'); if (pc) startEdit(pc);
   });
   $('#resetPrices').onclick = () => { state.prices = { ...clone(BASELINE), edited: {}, src: 'official baseline' }; persistPrices(); refresh(); toast('Baseline restored'); };
-  $$('[data-prim]').forEach(b => b.onclick = () => { buzz(); state.primary = b.dataset.prim; store.set('primary', state.primary); $$('[data-prim]').forEach(x => x.classList.toggle('on', x === b)); renderMatrix(); const mc = $('#matrix'); mc.classList.remove('swapping'); void mc.offsetWidth; mc.classList.add('swapping'); setTimeout(() => mc.classList.remove('swapping'), 220); });
+  $$('[data-prim]').forEach(b => b.onclick = () => { buzz(); vt(() => { state.primary = b.dataset.prim; store.set('primary', state.primary); $$('[data-prim]').forEach(x => x.classList.toggle('on', x === b)); refresh(); const mc = $('#matrix'); mc.classList.remove('swapping'); void mc.offsetWidth; mc.classList.add('swapping'); setTimeout(() => mc.classList.remove('swapping'), 220); }); });
 
   /* ---------- rewards, sparkline ---------- */
   function renderRewards() {
@@ -139,7 +147,7 @@
     $('#netAed').textContent = `${fmt(net)} AED/L`; $('#netPhp').textContent = `≈ ${fmt(net * state.rate)} PHP/L (${a.name}, ${state.cb}% rebate)`;
   }
   function renderStrip() {
-    $('#strip').innerHTML = state.prices.uae.map(([n, p], i) => `<button class="gt${i === state.grade ? ' on' : ''}" data-g="${i}" aria-pressed="${i === state.grade}"><span class="gn">${n}</span><b class="mono">${fmt(p)}</b><small>AED/L · ≈ ₱${fmt(p * state.rate)}</small></button>`).join('');
+    $('#strip').innerHTML = state.prices.uae.map(([n, p], i) => `<button class="gt${i === state.grade ? ' on' : ''}" data-g="${i}" aria-pressed="${i === state.grade}"><span class="gn">${n}</span><b class="mono">${state.primary === 'AED' ? fmt(p) : '₱' + fmt(p * state.rate)}</b><small>${state.primary === 'AED' ? 'AED/L · ≈ ₱' + fmt(p * state.rate) : 'PHP/L · ≈ ' + fmt(p) + ' AED'}</small></button>`).join('');
   }
   function renderSpark() {
     const W = 320, H = 96, p = 10, all = [...HISTORY.s98, ...HISTORY.s95], lo = Math.min(...all) - .05, hi = Math.max(...all) + .05;
@@ -154,11 +162,11 @@
   /* ---------- fill-up, add-ons, quick budget, remittance ---------- */
   function renderStop() {
     const a = active(), fuel = a.price * state.liters, items = state.addons.filter(k => ADDONS[k]);
-    const extra = items.reduce((s, k) => s + ADDONS[k][1], 0), tot = fuel + extra;
+    const extra = items.reduce((s, k) => s + ADDONS[k][1], 0), tot = fuel + extra; state.total = tot;
     const R = (k, v, d) => `<span data-roll="${k}" data-to="${v}" data-d="${d}"></span>`;
     $('#stopOut').innerHTML = `<div class="ln"><span>${a.name} · ${LT()} L</span><b class="mono">${R('fuel', fuel, 2)} AED</b></div>` +
       items.map(k => `<div class="ln"><span>${ADDONS[k][0]}</span><b class="mono">${fmt(ADDONS[k][1])} AED</b></div>`).join('') +
-      `<div class="ln tot"><span>Station visit total</span><b class="mono">${R('totA', tot, 2)} AED ≈ ${R('totP', tot * state.rate, 0)} PHP</b></div>`;
+      `<div class="ln tot"><span>Station visit total</span><b class="mono">${state.primary === 'AED' ? `${R('totA', tot, 2)} AED ≈ ${R('totP', tot * state.rate, 0)} PHP` : `${R('totP', tot * state.rate, 0)} PHP ≈ ${R('totA', tot, 2)} AED`}</b></div>`;
     rollNums('#stopOut', state.animating);
     $$('.ad').forEach(b => { const on = state.addons.includes(b.dataset.k); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   }
@@ -183,10 +191,12 @@
   });
 
   function renderBudget() {
-    const b = num($('#budget')), a = active(), tank = a.price * state.liters, r = state.rate;
-    if (!tank || !b) { $('#budgetOut').textContent = 'Enter a monthly allowance in AED to see how many full tanks it covers.'; return; }
-    const tanks = Math.floor(b / tank), left = b - tanks * tank;
-    $('#budgetOut').textContent = `${fmt(b, 0)} AED covers ${tanks} full ${LT()} L tank${tanks === 1 ? '' : 's'} of ${a.name} at ${fmt(tank)} AED each (one fill-up uses ${fmt(tank / b * 100, 1)}% of the budget). Left over after full tanks: ${fmt(left)} AED ≈ ₱${fmt(left * r, 0)}.`;
+    const b = num($('#budget')), a = active(), tank = a.price * state.liters, r = state.rate, P = state.primary;
+    const m = v => P === 'AED' ? `${fmt(v)} AED ≈ ₱${fmt(v * r, 0)}` : `₱${fmt(v * r, 0)} ≈ ${fmt(v)} AED`;
+    if (!tank || !b) $('#budgetOut').textContent = 'Enter a monthly allowance in AED to see how many full tanks it covers.';
+    else { const tanks = Math.floor(b / tank), left = b - tanks * tank;
+      $('#budgetOut').textContent = `${m(b)} covers ${tanks} full ${LT()} L tank${tanks === 1 ? '' : 's'} of ${a.name} at ${m(tank)} each (one fill-up uses ${fmt(tank / b * 100, 1)}% of the budget). Left over after full tanks: ${m(left)}.`; }
+    clearTimeout(renderBudget.t); renderBudget.t = setTimeout(refreshLog, 200);
   }
 
   /* ---------- commute ---------- */
@@ -194,7 +204,7 @@
     const route = $('#route').value, km = route === 'custom' ? num($('#customKm')) : +route;
     $('#customKmWrap').hidden = route !== 'custom';
     const a = active(), r = state.rate, lit = km / +$('#eff').value, fuel = lit * a.price, sal = +$('#gates').value * state.salik, tot = fuel + sal, n = state.split;
-    const both = v => `${fmt(v)} AED ≈ ₱${fmt(v * r, 0)}`;
+    const both = v => state.primary === 'AED' ? `${fmt(v)} AED ≈ ₱${fmt(v * r, 0)}` : `₱${fmt(v * r, 0)} ≈ ${fmt(v)} AED`;
     $('#commuteOut').innerHTML = `<div class="ln"><span>Fuel used</span><b class="mono">${fmt(lit)} L</b></div><div class="ln"><span>Fuel (${a.name})</span><b class="mono">${both(fuel)}</b></div>` +
       `<div class="ln"><span>Salik</span><b class="mono">${both(sal)}</b></div><div class="ln tot"><span>Trip total</span><b class="mono">${both(tot)}</b></div>` +
       (n > 1 ? `<div class="ln tot"><span>Each of ${n}</span><b class="mono">${both(tot / n)}</b></div>` : '');
@@ -207,12 +217,12 @@
 
   /* ---------- stations ---------- */
   function renderStations() {
-    const row = (title, q) => {
+    const g = state.geo, row = (title, q) => {
       const e = encodeURIComponent(q);
       return `<div class="stn"><span class="stn-n">${title}</span><span class="stn-l">
-        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Apple Maps" href="https://maps.apple.com/?q=${e}">Apple</a>
-        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Google Maps" href="https://www.google.com/maps/search/?api=1&query=${e}">Google</a>
-        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Waze" href="https://waze.com/ul?q=${e}&navigate=yes">Waze</a></span></div>`;
+        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Apple Maps" href="https://maps.apple.com/?q=${e}${g ? '&ll=' + g.lat + ',' + g.lng : ''}">Apple</a>
+        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Google Maps" href="${g ? `https://www.google.com/maps/search/${e}/@${g.lat},${g.lng},14z` : `https://www.google.com/maps/search/?api=1&query=${e}`}">Google</a>
+        <a class="chip" target="_blank" rel="noopener" aria-label="Open ${title} in Waze" href="https://waze.com/ul?q=${e}${g ? '&ll=' + g.lat + ',' + g.lng : ''}&navigate=yes">Waze</a></span></div>`;
     }, area = $('#area').value;
     $('#stationsOut').innerHTML = row(`Fuel near ${area}`, 'fuel station near ' + area + ' Dubai') + row('ADNOC, Discovery Gardens', 'ADNOC Service Station Discovery Gardens Dubai') +
       row('ENOC, Jebel Ali Industrial', 'ENOC petrol station Jebel Ali Industrial Dubai') + row('Emarat, E11', 'Emarat petrol station E11 Sheikh Zayed Road Dubai');
@@ -253,7 +263,7 @@
     $('#fallbackCards').innerHTML = NewsFetcher.FALLBACK_CARDS.filter(f => c === 'all' || f.cat === c).map((f, ix) => `<a class="fadein" style="animation-delay:${ix * 40}ms" href="${f.url}" target="_blank" rel="noopener">${f.title} <span class="ext" aria-hidden="true">↗</span><small>${f.note}</small></a>`).join('');
     $$('.nf').forEach(b => b.classList.toggle('on', b.dataset.cat === c)); glide($('#newsFilters'));
   }
-  async function loadNews(force) { $('#newsStatus').textContent = 'Loading…'; state.news = await NewsFetcher.load(force); renderNews(); }
+  async function loadNews(force) { $('#newsStatus').textContent = 'Loading…'; $('#news').innerHTML = '<li class="skel"></li><li class="skel"></li><li class="skel"></li>'; state.news = await NewsFetcher.load(force); renderNews(); }
   $$('.nf').forEach(b => b.onclick = () => {
     state.cat = b.dataset.cat; $$('.nf').forEach(x => x.classList.toggle('on', x === b)); glide($('#newsFilters'));
     if (!motionOK()) return renderNews();
@@ -262,7 +272,7 @@
   $('#refreshNews').onclick = () => loadNews(true);
 
   /* ---------- sharing ---------- */
-  async function share(text, url = APP_URL) {
+  async function share(text, url = configUrl()) {
     try {
       if (navigator.share) return await navigator.share({ title: 'Dubai Fuel Monitor', text, url });
       await navigator.clipboard.writeText(`${text}\n${url}`); toast('Copied to clipboard');
@@ -271,32 +281,47 @@
   $('#shareBtn').onclick = () => { const a = active(); share(`Dubai fuel (${monthLabel(state.prices.month)}): ${a.name} ${fmt(a.price)} AED/L ≈ ${fmt(a.price * state.rate)} PHP/L. ${LT()}L = ${fmt(a.price * state.liters)} AED ≈ ${fmt(a.price * state.liters * state.rate, 0)} PHP. 1 AED = ${fmt(state.rate, 3)} PHP.`); };
   $('#waBtn').onclick = () => {
     const a = active(), r = state.rate, L = state.liters;
-    const t = `⛽ Dubai Fuel Update (${monthLabel(state.prices.month)}): ${a.name}: ${fmt(a.price)} AED/L (₱${fmt(a.price * r)}/L) | PH ${a.phName}: ₱${fmt(a.phPrice)}/L.\n${LT()}L fill-up: ${fmt(a.price * L)} AED (~₱${fmt(a.price * L * r, 0)}).\nCompare here: ${APP_URL}`;
+    const t = `⛽ Dubai Fuel Update (${monthLabel(state.prices.month)}): ${a.name}: ${fmt(a.price)} AED/L (₱${fmt(a.price * r)}/L) | PH ${a.phName}: ₱${fmt(a.phPrice)}/L.\n${LT()}L fill-up: ${fmt(a.price * L)} AED (~₱${fmt(a.price * L * r, 0)}).\nCompare here: ${configUrl()}`;
     window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener');
   };
 
   /* ---------- story card (canvas) ---------- */
   let storyBlob = null;
+  const THEMES = {
+    obsidian: { bg: ['#16213a', '#05070c'], text: '#f2f5fa', mute: '#9aa7bd', accent: '#f5b83d', panel: 'rgba(255,255,255,.07)', good: '#3ddc97', bad: '#ff6b6b' },
+    adnoc: { bg: ['#0b3a9c', '#051d52'], text: '#ffffff', mute: '#b9c8ee', accent: '#f2b705', panel: 'rgba(255,255,255,.12)', good: '#7dffb2', bad: '#ffb0b0' },
+    ofw: { bg: ['#fbf8f1', '#efe8d8'], text: '#14213d', mute: '#5b6477', accent: '#c8102e', panel: 'rgba(20,33,61,.07)', good: '#0a7d4f', bad: '#b3261e' }
+  };
   function drawStory() {
     const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
-    const F = '"Inter", system-ui, -apple-system, sans-serif', r = state.rate;
-    const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#16213a'); g.addColorStop(1, '#05070c'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    const F = '"Inter", system-ui, -apple-system, sans-serif', r = state.rate, T = THEMES[state.storyTheme] || THEMES.obsidian;
+    const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, T.bg[0]); g.addColorStop(1, T.bg[1]); x.fillStyle = g; x.fillRect(0, 0, W, H);
     const rr = (a, b, w, h, rad, fill) => { x.beginPath(); x.roundRect ? x.roundRect(a, b, w, h, rad) : x.rect(a, b, w, h); x.fillStyle = fill; x.fill(); };
-    x.textAlign = 'center'; x.fillStyle = '#f5b83d'; x.font = `800 84px ${F}`; x.fillText('⛽ Dubai Fuel Monitor', W / 2, 190);
-    x.fillStyle = '#f2f5fa'; x.font = `600 44px ${F}`; x.fillText(new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), W / 2, 270);
-    rr(90, 330, 900, 150, 30, 'rgba(255,255,255,.08)'); x.fillStyle = '#f2f5fa'; x.font = `700 58px ${F}`; x.fillText(`1 AED = ${fmt(r, 3)} PHP`, W / 2, 425);
-    x.fillStyle = '#9aa7bd'; x.font = `500 30px ${F}`; x.fillText(state.live ? 'Live exchange rate' : 'Cached exchange rate', W / 2, 468);
-    x.fillStyle = '#9aa7bd'; x.font = `700 34px ${F}`; x.fillText('UAE vs Philippines · per litre', W / 2, 580);
-    state.prices.uae.forEach(([name, p], i) => {
-      const y = 620 + i * 280, php = state.prices.ph[i][1], d = (p * r - php) / php * 100;
-      rr(70, y, 940, 250, 36, 'rgba(255,255,255,.07)');
-      x.textAlign = 'left'; x.fillStyle = '#f5b83d'; x.font = `800 44px ${F}`; x.fillText(`${name} vs ${state.prices.ph[i][0]}`, 110, y + 70);
-      x.fillStyle = '#f2f5fa'; x.font = `700 52px ${F}`; x.fillText(`🇦🇪 ${fmt(p)} AED`, 110, y + 150); x.font = `500 32px ${F}`; x.fillStyle = '#9aa7bd'; x.fillText(`≈ ₱${fmt(p * r)}`, 110, y + 200);
-      x.fillStyle = '#f2f5fa'; x.font = `700 52px ${F}`; x.fillText(`🇵🇭 ₱${fmt(php)}`, 560, y + 150);
-      x.textAlign = 'right'; x.fillStyle = d <= 0 ? '#3ddc97' : '#ff6b6b'; x.font = `800 44px ${F}`; x.fillText(`${d > 0 ? '+' : ''}${fmt(d, 1)}%`, 970, y + 70);
-    });
-    x.textAlign = 'center'; x.fillStyle = '#9aa7bd'; x.font = `500 28px ${F}`; x.fillText(PH_NOTE + ' · % = UAE vs PH', W / 2, 1780);
-    x.fillStyle = '#f5b83d'; x.font = `700 34px ${F}`; x.fillText(APP_URL.replace('https://', ''), W / 2, 1850);
+    const t = (s, px, y, col, wt = 700, al = 'center', xx = W / 2) => { x.textAlign = al; x.fillStyle = col; x.font = `${wt} ${px}px ${F}`; x.fillText(s, xx, y); };
+    t('⛽ Dubai Fuel Monitor', 84, 190, T.accent, 800);
+    t(new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), 44, 270, T.text, 600);
+    if (state.storyTheme === 'ofw') {                     // minimalist remittance comparison
+      const a = active(), tank = a.price * state.liters, per = a.price * r, d = (per - a.phPrice) / a.phPrice * 100;
+      rr(90, 360, 900, 560, 40, T.panel);
+      t(`One full ${LT()} L tank of ${a.name}`, 44, 450, T.mute, 600); t(`₱${fmt(tank * r, 0)}`, 170, 640, T.accent, 800);
+      t(`${fmt(tank)} AED`, 64, 740, T.text, 700); t(`1 AED = ${fmt(r, 3)} PHP`, 36, 830, T.mute, 500);
+      rr(90, 970, 900, 520, 40, T.panel); t('Per litre, in pesos', 40, 1050, T.mute, 600);
+      t(`🇦🇪 ₱${fmt(per)}`, 80, 1190, T.text, 800); t(`🇵🇭 ₱${fmt(a.phPrice)}`, 80, 1330, T.text, 800);
+      t(`${d > 0 ? '+' : ''}${fmt(d, 1)}% UAE vs Philippines`, 44, 1440, d <= 0 ? T.good : T.bad, 800);
+      t(`Saving this tank means about ₱${fmt(tank * r, 0)} you can send home.`, 34, 1580, T.text, 500);
+    } else {
+      rr(90, 330, 900, 150, 30, T.panel); t(`1 AED = ${fmt(r, 3)} PHP`, 58, 425, T.text, 700);
+      t(state.live ? 'Live exchange rate' : 'Cached exchange rate', 30, 468, T.mute, 500); t('UAE vs Philippines · per litre', 34, 580, T.mute, 700);
+      state.prices.uae.forEach(([name, p], i) => {
+        const y = 620 + i * 280, php = state.prices.ph[i][1], d = (p * r - php) / php * 100;
+        rr(70, y, 940, 250, 36, T.panel);
+        t(`${name} vs ${state.prices.ph[i][0]}`, 44, y + 70, T.accent, 800, 'left', 110);
+        t(`🇦🇪 ${fmt(p)} AED`, 52, y + 150, T.text, 700, 'left', 110); t(`≈ ₱${fmt(p * r)}`, 32, y + 200, T.mute, 500, 'left', 110);
+        t(`🇵🇭 ₱${fmt(php)}`, 52, y + 150, T.text, 700, 'left', 560);
+        t(`${d > 0 ? '+' : ''}${fmt(d, 1)}%`, 44, y + 70, d <= 0 ? T.good : T.bad, 800, 'right', 970);
+      });
+    }
+    t(PH_NOTE + ' · % = UAE vs PH', 28, 1780, T.mute, 500); t(APP_URL.replace('https://', ''), 34, 1850, T.accent, 700);
     return new Promise(res => c.toBlob(b => res(b), 'image/png'));
   }
   let storyFile = null, storyUrl = '', storyCanShare = false, storyTimer = 0;
@@ -316,6 +341,7 @@
     $('#storyImg').src = storyUrl; $('#storyModal').hidden = false;
     const w = $('#sheenWrap'); w.classList.remove('play'); void w.offsetWidth; w.classList.add('play'); confetti();
   };
+  $$('.th').forEach(b => { b.classList.toggle('on', b.dataset.t === state.storyTheme); b.onclick = () => { state.storyTheme = b.dataset.t; store.set('storyTheme', state.storyTheme); $$('.th').forEach(x => x.classList.toggle('on', x === b)); scheduleStory(0); }; });
   $('#storyClose').onclick = () => { $('#storyModal').hidden = true; };
   $('#storyDl').onclick = () => { if (!storyUrl) return; const a = document.createElement('a'); a.href = storyUrl; a.download = 'dubai-fuel-story.png'; document.body.appendChild(a); a.click(); a.remove(); };
   // navigator.share is called synchronously from the tap, with the already-built file, so iOS keeps user activation.
@@ -368,16 +394,18 @@
   $$('.vp').forEach(b => b.onclick = () => { buzz(); animateTo(+b.dataset.v); });
   $('#strip').addEventListener('click', e => { const t = e.target.closest('.gt'); if (!t) return; buzz(); state.grade = +t.dataset.g; store.set('grade', state.grade); refresh(); });
   $('#cashReset').onclick = () => { buzz(); state.cash = null; animateTo(Math.round(state.prev) || 67); };
-  $('#cbSel').value = state.cb; $('#cbSel').onchange = e => { state.cb = +e.target.value; store.set('cb', state.cb); renderRewards(); };
+  const cbPre = ['0', '2', '5', '7.5', '10'].includes(String(state.cb)); $('#cbSel').value = cbPre ? String(state.cb) : 'custom'; $('#cbCustom').hidden = cbPre; if (!cbPre) $('#cbCustom').value = state.cb;
+  $('#cbSel').onchange = e => { if (e.target.value === 'custom') { $('#cbCustom').hidden = false; $('#cbCustom').focus(); return; } $('#cbCustom').hidden = true; state.cb = +e.target.value; store.set('cb', state.cb); renderRewards(); };
+  $('#cbCustom').addEventListener('input', e => { state.cb = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)); store.set('cb', state.cb); renderRewards(); });
 
   /* ---------- inputs ---------- */
   const amt = $('#amt'); amt.removeAttribute('pattern'); amt.setAttribute('inputmode', 'decimal'); amt.step = 'any'; amt.min = 0;
-  [amt, $('#budget'), $('#customKm')].forEach(el => el.addEventListener('input', () => { if (parseFloat(el.value) < 0) el.value = 0; }));
+  [amt, $('#budget'), $('#customKm'), $('#logOdo'), $('#logL'), $('#logAed'), $('#cbCustom')].forEach(el => el.addEventListener('input', () => { if (parseFloat(el.value) < 0) el.value = 0; }));
   amt.addEventListener('input', renderConverter);
   $('#budget').value = store.get('budget', 1000);
   $('#budget').addEventListener('input', () => { store.set('budget', num($('#budget'))); renderBudget(); renderTip(); });
   $('#dirBtn').onclick = () => { state.dir = state.dir === 'AED2PHP' ? 'PHP2AED' : 'AED2PHP'; store.set('dir', state.dir); renderConverter(); };
-  $$('.seg[data-mode]').forEach(b => b.onclick = () => { buzz(); applyMode(b.dataset.mode); });
+  $$('.seg[data-mode]').forEach(b => b.onclick = () => { buzz(); vt(() => applyMode(b.dataset.mode)); });
 
   /* ---------- pull to refresh (elastic, fuel-drop) ---------- */
   let y0 = null, pulled = 0, refreshing = false;
@@ -399,6 +427,72 @@
     pulled = 0;
   });
   const refreshAll = () => Promise.allSettled([syncFx(), syncUae(false), loadNews(true)]);
+
+  /* ---------- 27-item features ---------- */
+  const vt = fn => (document.startViewTransition && motionOK()) ? document.startViewTransition(fn) : fn();
+  const idb = (() => {
+    let dbp; const open = () => dbp || (dbp = new Promise((res, rej) => { const r = indexedDB.open('dubaifuel', 1); r.onupgradeneeded = () => r.result.createObjectStore('fills', { keyPath: 'id', autoIncrement: true }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+    const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('fills', mode), rq = fn(t.objectStore('fills')); t.oncomplete = () => res(rq && rq.result); t.onerror = () => rej(t.error); }); };
+    return { all: () => tx('readonly', s => s.getAll()), add: v => tx('readwrite', s => s.add(v)), clear: () => tx('readwrite', s => s.clear()) };
+  })();
+  async function refreshLog() {
+    let rows = []; try { rows = (await idb.all()) || []; } catch (_) {}
+    rows.sort((x, y) => x.odo - y.odo);
+    const now = new Date(), ms = rows.filter(r => { const d = new Date(r.t); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); });
+    const spent = ms.reduce((s, r) => s + r.aed, 0), b = num($('#budget')), pct = b ? Math.min(100, spent / b * 100) : 0;
+    $('#bfill').style.width = pct + '%'; $('#bfill').classList.toggle('over', !!b && spent > b);
+    $('#bnote').textContent = ms.length ? `Logged this month: ${fmt(spent)} AED of ${fmt(b, 0)} AED (${fmt(b ? spent / b * 100 : 0, 0)}%) across ${ms.length} fill-up${ms.length === 1 ? '' : 's'}.` : 'No fill-ups logged this month yet.';
+    const eff = []; for (let i = 1; i < rows.length; i++) { const d = rows[i].odo - rows[i - 1].odo; if (d > 0 && rows[i].liters > 0) eff.push(d / rows[i].liters); }
+    $('#logSummary').textContent = eff.length ? `Average real economy: ${fmt(eff.reduce((s, v) => s + v, 0) / eff.length, 1)} km/L over ${eff.length} fill-up${eff.length === 1 ? '' : 's'}.` : 'Log at least two full-tank fills to see your real km/L.';
+    $('#logList').innerHTML = rows.slice(-5).reverse().map(r => `<div class="ln"><span>${new Date(r.t).toLocaleDateString('en-GB')} · ${fmt(r.odo, 0)} km</span><b class="mono">${fmt(r.liters)} L · ${fmt(r.aed)} AED</b></div>`).join('');
+  }
+  $('#logSave').onclick = async () => {
+    const odo = num($('#logOdo')), liters = num($('#logL')), aed = num($('#logAed')); if (!odo || !liters || !aed) return toast('Enter odometer, litres and AED paid');
+    try { await idb.add({ t: Date.now(), odo, liters, aed }); ['#logOdo', '#logL', '#logAed'].forEach(s => { $(s).value = ''; }); toast('Fill-up saved'); refreshLog(); } catch (_) { toast('Could not save on this device'); }
+  };
+  $('#logClear').onclick = async () => { if (!confirm('Clear all logged fill-ups on this device?')) return; try { await idb.clear(); } catch (_) {} refreshLog(); };
+  $('#logFill').onclick = () => {
+    const a = active(); $('#logL').value = Math.round(state.liters * 100) / 100; $('#logAed').value = Math.round(a.price * state.liters * 100) / 100;
+    const acc = $('#logAcc'); if (!acc.classList.contains('open')) acc.querySelector('.acc-h').click(); $('#logOdo').focus();
+  };
+  $('#geoBtn').onclick = () => {
+    if (!navigator.geolocation) return toast('Location is not available on this device');
+    $('#geoNote').textContent = 'Finding you…';
+    navigator.geolocation.getCurrentPosition(p => { state.geo = { lat: +p.coords.latitude.toFixed(4), lng: +p.coords.longitude.toFixed(4) }; $('#geoNote').textContent = 'Map links now search near you.'; renderStations(); },
+      () => { $('#geoNote').textContent = ''; toast('Location permission denied or unavailable'); }, { timeout: 8000, maximumAge: 60000 });
+  };
+  $('#icsBtn').onclick = () => {
+    const d = new Date(), p = n => String(n).padStart(2, '0'); let last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    if (last < new Date(d.getFullYear(), d.getMonth(), d.getDate())) last = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+    const ds = `${last.getFullYear()}${p(last.getMonth() + 1)}${p(last.getDate())}`;
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dubai Fuel Monitor//EN', 'BEGIN:VEVENT', `UID:dubaifuel-${ds}@esp046-cyber.github.io`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+      `DTSTART;VALUE=DATE:${ds}`, 'RRULE:FREQ=MONTHLY;BYMONTHDAY=-1', 'SUMMARY:UAE fuel prices announced for next month', 'DESCRIPTION:The UAE Fuel Price Committee usually announces next month’s prices around month end. Open Dubai Fuel Monitor to compare.',
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:UAE fuel price announcement', 'TRIGGER;RELATED=START:-PT15H', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })), l = document.createElement('a'); l.href = url; l.download = 'dubai-fuel-reminder.ics'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast('Reminder file created');
+  };
+  $('#copyBtn').onclick = async () => {
+    const a = active(), r = state.rate, items = state.addons.filter(k => ADDONS[k]);
+    const txt = [`Fuel receipt · ${new Date().toLocaleDateString('en-GB')}`, `${a.name}: ${LT()} L × ${fmt(a.price)} AED/L = ${fmt(a.price * state.liters)} AED`, ...items.map(k => `${ADDONS[k][0]}: ${fmt(ADDONS[k][1])} AED`),
+      `Total: ${fmt(state.total)} AED (≈ ₱${fmt(state.total * r, 0)} at 1 AED = ${fmt(r, 3)} PHP)`].join('\n');
+    try { await navigator.clipboard.writeText(txt); } catch (_) { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (__) {} t.remove(); }
+    buzz(); toast('Receipt copied');
+  };
+  function renderCar() {
+    const car = store.get('car', null), box = $('#carChip'); box.innerHTML = ''; if (!car) return;
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = `🚗 ${car.name} · ${car.liters} L`; b.onclick = () => { buzz(); animateTo(car.liters); };
+    const x = document.createElement('button'); x.className = 'chip'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove saved car'); x.onclick = () => { store.set('car', null); renderCar(); };
+    box.append(b, x);
+  }
+  $('#carSave').onclick = () => { store.set('car', { name: $('#carName').value.trim() || 'My car', liters: Math.round(state.liters) }); renderCar(); toast('Saved as your default tank'); };
+  function renderMini() {
+    const a = active(), r = state.rate, t = state.total;
+    $('#miniBar').textContent = `${LT()} L · ${a.name} · ` + (state.primary === 'AED' ? `${fmt(t)} AED (₱${fmt(t * r, 0)})` : `₱${fmt(t * r, 0)} (${fmt(t)} AED)`);
+  }
+  function initMini() {
+    if (!('IntersectionObserver' in window)) return;
+    new IntersectionObserver(([en]) => { $('#miniBar').hidden = !(!en.isIntersecting && en.boundingClientRect.bottom < 0); }).observe($('#calc'));
+  }
 
   /* ---------- micro-interactions ---------- */
   const motionOK = () => !(state.mode === 'battery' || matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -483,12 +577,12 @@
       state.liters = Math.round(aed / active().price * 100) / 100; $('#vol').value = Math.min(140, Math.max(10, Math.round(state.liters))); $('#volOut').textContent = LT();
     }
     $$('.vp').forEach(b => b.classList.toggle('on', !state.cash && +b.dataset.v === state.liters)); glide($('#vpresets'));
-    renderStrip(); renderConverter(); renderMatrix(); renderRewards(); renderStop(); renderQuick(); renderBudget(); renderCommute(); renderTank(); scheduleStory(); }
+    renderStrip(); renderConverter(); renderMatrix(); renderRewards(); renderStop(); renderQuick(); renderBudget(); renderCommute(); renderTank(); renderMini(); scheduleStory(); }
 
   applyMode(state.mode);
   $$('[data-prim]').forEach(b => b.classList.toggle('on', b.dataset.prim === state.primary));
   applyLiters(state.liters); renderSpark(); renderTrackers(); renderTip(); renderStations(); loadNews(false);
-  initSparkScrub(); initAcc(); initUpdateToast();
+  initSparkScrub(); initAcc(); initUpdateToast(); initMini(); renderCar(); refreshLog();
   addEventListener('resize', () => { glide($('#vpresets')); glide($('#newsFilters')); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { glide($('#vpresets')); glide($('#newsFilters')); });
   syncFx(); syncUae(false);
