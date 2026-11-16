@@ -49,7 +49,10 @@
   <button id="iosBannerClose" class="btn ghost" aria-label="Dismiss home screen tip">✕</button>
 </div>
 <div id="miniBar" class="minibar" hidden aria-live="polite"></div>
-<main>
+<main id="main">
+  <a class="skip" href="#home">Skip to content</a>
+  <div class="sec" id="home" role="region" aria-labelledby="h-home">
+  <div class="sec-top"><h2 class="sec-h" id="h-home">Home</h2><p class="sec-sub">Today’s UAE and Philippine fuel prices</p></div>
   <div class="fxbar acc" id="fxAcc">
     <button class="acc-h fxh" aria-expanded="false" aria-controls="fxB" aria-label="Exchange rate and currency converter">
       <span id="fxPill" class="fx loading" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="fxText">Checking FX…</span><span id="fxAge" class="fxage"></span></span><span class="chev" aria-hidden="true"></span></button>
@@ -61,11 +64,35 @@
     </div></div></div>
   </div>
 
-  <div class="row primrow"><span class="note">Show prices in</span><div class="duo" role="group" aria-label="Primary display currency"><button class="seg on" data-prim="AED">AED</button><button class="seg" data-prim="PHP">PHP</button></div></div>
   <section class="card" aria-label="Live UAE fuel prices">
     <div class="strip4" id="strip" role="group" aria-label="Choose fuel grade"></div>
   </section>
 
+  <section class="card" id="matrixSec">
+    <h2>UAE vs Philippines per litre</h2>
+    <p class="note" id="phNote"></p>
+    <div class="mwrap"><table class="tbl mtbl" id="matrix"></table></div>
+    <p class="note" id="priceStatus"></p>
+    <p class="note" id="matrixNote"></p>
+    <div class="row"><button id="syncPrices" class="btn ghost">Sync UAE prices</button><button id="resetPrices" class="btn ghost">Reset to baseline</button></div>
+  </section>
+
+  <section class="trackers" aria-label="Price announcement trackers"><div class="trk" id="trkUae"></div><div class="trk" id="trkPh"></div></section>
+  <div class="row" style="margin:-4px 0 10px"><button id="icsBtn" class="chip">🔔 Remind me on announcement day</button></div>
+
+  <section class="card quick" aria-label="Quick access"><h2>Quick access</h2>
+    <div class="qgrid">
+      <button class="qa" data-go="calc"><span class="qi" aria-hidden="true">⛽</span>Fill-up cost</button>
+      <button class="qa" data-go="budgetAcc"><span class="qi" aria-hidden="true">💰</span>Budget</button>
+      <button class="qa" data-go="commute"><span class="qi" aria-hidden="true">🚗</span>Commute</button>
+      <button class="qa" data-go="stationsCard"><span class="qi" aria-hidden="true">📍</span>Stations</button>
+      <button class="qa" data-go="newsCard"><span class="qi" aria-hidden="true">📰</span>News</button>
+      <button class="qa" data-go="logAcc"><span class="qi" aria-hidden="true">📒</span>Fill-up log</button>
+    </div></section>
+  </div>
+  <div class="sec" id="fuel" role="region" aria-labelledby="h-fuel">
+  <div class="sec-top"><h2 class="sec-h" id="h-fuel">Fuel</h2><p class="sec-sub">Work out what a fill-up costs</p></div>
+  <div class="row primrow"><span class="note">Show prices in</span><div class="duo" role="group" aria-label="Primary display currency"><button class="seg on" data-prim="AED">AED</button><button class="seg" data-prim="PHP">PHP</button></div></div>
   <section class="card" id="calc">
     <div class="row"><h2>Fill-up cost</h2><span class="mono big"><output id="volOut">67</output> L</span></div>
     <button id="cashReset" class="chip" hidden>↺ Reset to full tank</button>
@@ -99,39 +126,9 @@
     <div class="row wrap3"><button id="waBtn" class="btn wa">Share on WhatsApp</button><button id="storyBtn" class="btn">Create Story Card</button><button id="copyBtn" class="btn ghost">Copy receipt</button></div>
   </section>
 
-  <section class="card modes" aria-label="Display mode">
-    <button data-mode="standard" class="seg on">Standard</button>
-    <button data-mode="sunlight" class="seg">Sunlight</button>
-    <button data-mode="battery" class="seg">AMOLED</button>
-  </section>
-  <section class="trackers" aria-label="Price announcement trackers"><div class="trk" id="trkUae"></div><div class="trk" id="trkPh"></div></section>
-  <div class="row" style="margin:-4px 0 10px"><button id="icsBtn" class="chip">🔔 Remind me on announcement day</button></div>
-
-  <section class="card" id="matrixSec">
-    <h2>UAE vs Philippines per litre</h2>
-    <p class="note" id="phNote"></p>
-    <div class="mwrap"><table class="tbl mtbl" id="matrix"></table></div>
-    <p class="note" id="priceStatus"></p>
-    <p class="note" id="matrixNote"></p>
-    <div class="acc" id="octane"><button class="acc-h" aria-expanded="false" aria-controls="octaneB">Octane &amp; Engine Guide<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="octaneB"><div class="acc-in"><ul>
-      <li><b>Super 98</b> (closest PH match: RON 97/100): high-compression, turbocharged and performance engines, or any car whose manual asks for 98.</li>
-      <li><b>Special 95</b> (PH: RON 95): the standard choice for most sedans, crossovers and SUVs.</li>
-      <li><b>E-Plus 91</b> (PH: RON 91): fleet and commercial vehicles, or cars whose manual explicitly allows 91.</li>
-      <li>In UAE desert heat and heavy loads, a grade below your manual's requirement can cause knocking. Always follow the owner's manual.</li></ul></div></div></div>
-    <div class="row"><button id="syncPrices" class="btn ghost">Sync UAE prices</button><button id="resetPrices" class="btn ghost">Reset to baseline</button></div>
-  </section>
-
-  <section class="card acc" id="rewardsAcc"><button class="acc-h" aria-expanded="false" aria-controls="rewardsB">Rewards, rebate &amp; 6-month trend<span class="chev" aria-hidden="true"></span></button>
-    <div class="acc-b" id="rewardsB"><div class="acc-in">
-      <div class="strip" aria-label="Loyalty and cashback">
-        <div><span class="lbl" id="rwLbl">ADNOC Rewards</span><b class="mono" id="pts">—</b><small>points, scaled from the 1,743-point reference receipt</small></div>
-        <div><label class="lbl" for="cbSel">Card fuel rebate</label><select id="cbSel"><option value="0">0%</option><option value="2">2%</option><option value="5">5%</option><option value="7.5">7.5%</option><option value="10">10%</option><option value="custom">Custom…</option></select><input id="cbCustom" type="number" inputmode="decimal" step="any" min="0" max="100" placeholder="% rebate" aria-label="Custom rebate percent" hidden><small>Check your card’s own terms for the real rate.</small></div>
-        <div><span class="lbl">Net price</span><b class="mono" id="netAed">—</b><small id="netPhp"></small></div>
-      </div>
-      <h3 class="sub2">Super 98 &amp; Special 95: Jun–Nov 2026 (AED/L)</h3>
-      <div id="spark" class="spark"></div><p class="note" id="sparkNote"></p>
-    </div></div></section>
-
+  </div>
+  <div class="sec" id="tools" role="region" aria-labelledby="h-tools">
+  <div class="sec-top"><h2 class="sec-h" id="h-tools">Tools</h2><p class="sec-sub">Budget, fill-up log, km/L and commute costs</p></div>
   <section class="card acc open" id="budgetAcc"><button class="acc-h" aria-expanded="true" aria-controls="budgetB">Monthly fuel budget<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="budgetB"><div class="acc-in">
     <div class="row"><label for="budget">Allowance / cap (AED)</label>
       <input id="budget" type="number" inputmode="decimal" step="any" min="0" value="1000" aria-label="Monthly fuel budget in AED"></div>
@@ -172,7 +169,10 @@
     <p class="note">Salik rates are as entered here; confirm current tariffs with RTA.</p>
   </div></div></section>
 
-  <section class="card">
+  </div>
+  <div class="sec" id="stations" role="region" aria-labelledby="h-stations">
+  <div class="sec-top"><h2 class="sec-h" id="h-stations">Stations</h2><p class="sec-sub">Find a fuel station near you</p></div>
+  <section class="card" id="stationsCard">
     <h2>Nearest stations</h2>
     <div class="row"><label for="area">Area</label>
       <select id="area"><option>Jebel Ali</option><option>Discovery Gardens</option><option>Al Furjan</option><option>Sheikh Zayed Road</option></select></div>
@@ -181,7 +181,10 @@
     <p class="note">Links open a map search, so check the pin before you drive.</p>
   </section>
 
-  <section class="card">
+  </div>
+  <div class="sec" id="more" role="region" aria-labelledby="h-more">
+  <div class="sec-top"><h2 class="sec-h" id="h-more">More</h2><p class="sec-sub">News, rewards, guides and settings</p></div>
+  <section class="card" id="newsCard">
     <div class="row"><h2>Fuel &amp; energy news</h2><button id="refreshNews" class="btn ghost">Refresh</button></div>
     <div class="pillrow glide" id="newsFilters" role="group" aria-label="News category"><span class="glide-ind" aria-hidden="true"></span>
       <button class="chip nf on" data-cat="all">All Updates</button><button class="chip nf" data-cat="uae">UAE Fuel Committee</button>
@@ -192,6 +195,23 @@
     <div id="fallbackCards" class="fallback"></div>
   </section>
 
+  <section class="card acc" id="rewardsAcc"><button class="acc-h" aria-expanded="false" aria-controls="rewardsB">Rewards, rebate &amp; 6-month trend<span class="chev" aria-hidden="true"></span></button>
+    <div class="acc-b" id="rewardsB"><div class="acc-in">
+      <div class="strip" aria-label="Loyalty and cashback">
+        <div><span class="lbl" id="rwLbl">ADNOC Rewards</span><b class="mono" id="pts">—</b><small>points, scaled from the 1,743-point reference receipt</small></div>
+        <div><label class="lbl" for="cbSel">Card fuel rebate</label><select id="cbSel"><option value="0">0%</option><option value="2">2%</option><option value="5">5%</option><option value="7.5">7.5%</option><option value="10">10%</option><option value="custom">Custom…</option></select><input id="cbCustom" type="number" inputmode="decimal" step="any" min="0" max="100" placeholder="% rebate" aria-label="Custom rebate percent" hidden><small>Check your card’s own terms for the real rate.</small></div>
+        <div><span class="lbl">Net price</span><b class="mono" id="netAed">—</b><small id="netPhp"></small></div>
+      </div>
+      <h3 class="sub2">Super 98 &amp; Special 95: Jun–Nov 2026 (AED/L)</h3>
+      <div id="spark" class="spark"></div><p class="note" id="sparkNote"></p>
+    </div></div></section>
+
+    <section class="card acc" id="octane"><button class="acc-h" aria-expanded="false" aria-controls="octaneB">Octane &amp; Engine Guide<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="octaneB"><div class="acc-in"><ul>
+      <li><b>Super 98</b> (closest PH match: RON 97/100): high-compression, turbocharged and performance engines, or any car whose manual asks for 98.</li>
+      <li><b>Special 95</b> (PH: RON 95): the standard choice for most sedans, crossovers and SUVs.</li>
+      <li><b>E-Plus 91</b> (PH: RON 91): fleet and commercial vehicles, or cars whose manual explicitly allows 91.</li>
+      <li>In UAE desert heat and heavy loads, a grade below your manual's requirement can cause knocking. Always follow the owner's manual.</li></ul></div></div></section>
+  <section class="card acc" id="tipBanner"><button class="acc-h" aria-expanded="false" aria-controls="tipB">UAE driving efficiency tips<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="tipB"><div class="acc-in"><p class="note" id="tipText"></p></div></div></section>
   <section class="card acc" id="receiptAcc"><button class="acc-h" aria-expanded="false" aria-controls="receiptB">ADNOC receipt reference (example)<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="receiptB"><div class="acc-in">
     <p class="note">A fixed example: Super 98, 67 L. It does not change with the calculator above.</p>
     <table class="tbl">
@@ -200,8 +220,14 @@
       <tr class="tot"><td>Total (earns ADNOC Rewards)</td><td class="mono">278.72 AED</td></tr>
     </table><p class="note" id="receiptPhp"></p></div></div></section>
 
-  <section class="card acc" id="tipBanner"><button class="acc-h" aria-expanded="false" aria-controls="tipB">UAE driving efficiency tips<span class="chev" aria-hidden="true"></span></button><div class="acc-b" id="tipB"><div class="acc-in"><p class="note" id="tipText"></p></div></div></section>
+  <section class="card" id="settingsCard"><h2>Themes &amp; settings</h2>
+    <div class="modes" role="group" aria-label="Display mode"><button data-mode="standard" class="seg on">Standard</button>
+    <button data-mode="sunlight" class="seg">Sunlight</button>
+    <button data-mode="battery" class="seg">AMOLED</button></div>
+    <div class="row"><span class="note">Add the app to your home screen</span><button id="installHow" class="btn ghost">Install app</button></div>
+  </section>
   <p class="note foot">UAE prices follow the monthly UAE Fuel Price Committee announcement. Philippine prices are estimated Metro Manila averages within the DOE weekly range: tap a price to edit it. Exchange rates update live.</p>
+  </div>
 </main>
 
 <div id="iosModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="iosTitle">
@@ -225,6 +251,14 @@
   </div>
 </div>
 <button id="updatePill" class="update-pill" hidden></button>
+<nav id="bottomNav" class="bnav" aria-label="Main navigation">
+  <a href="#home" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/></svg><span>Home</span></a>
+  <a href="#fuel" data-nav="fuel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M4 21h12"/><path d="M8 8h4"/><path d="M15 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V9l-3-3"/></svg><span>Fuel</span></a>
+  <a href="#tools" data-nav="tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 12.6 12.6 21a2.1 2.1 0 0 1-3-3L18 9.6"/><path d="M14.7 6.3 16 5l3 3-1.3 1.3"/></svg><span>Tools</span></a>
+  <a href="#stations" data-nav="stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Stations</span></a>
+  <a href="#more" data-nav="more"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg><span>More</span></a>
+</nav>
+<button id="toTop" class="totop" hidden aria-label="Back to top">↑</button>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="./js/news-fetcher.js"></script>
 <script src="./js/app.js"></script>
